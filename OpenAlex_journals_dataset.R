@@ -323,26 +323,6 @@ ddff_megamerge <- ddff_ISSNs_match %>% left_join(openalex_journals, by = "OA_ID"
                                        left_join(sjr_journals, by = "SJR_ID") %>%
                                        left_join(cwts_journals, by = "CWTS_ID")
 
-ddff_megamerge <- ddff_megamerge %>% select(OA_ID, MJL_ID, JCR_ID, SCOP_ID, DOAJ_ID, SJR_ID, CWTS_ID,
-                                            OA_source_ID, SCOP_source_ID, SJR_source_ID,
-                                            OA_ISSN_codes, MJL_ISSN_codes, JCR_ISSN_codes, SCOP_ISSN_codes, DOAJ_ISSN_codes, DOAJ_continues_ISSN, DOAJ_continued_by_ISSN, SJR_ISSN_codes, CWTS_ISSN_codes,
-                                            OA_journal_name, MJL_journal_name, JCR_journal_name, SCOP_journal_name, DOAJ_journal_name, SJR_journal_name, CWTS_journal_name,
-                                            OA_journal_name_variants, JCR_journal_name_variants, SCOP_journal_name_variants, DOAJ_journal_name_variants,
-                                            OA_publisher, MJL_publisher, JCR_publisher, SCOP_publisher, DOAJ_publisher, SJR_publisher,
-                                            OA_publisher_country, MJL_publisher_country, DOAJ_publisher_country, SJR_publisher_country,
-                                            SCOP_main_publisher, DOAJ_other_organization, DOAJ_other_organization_country, SJR_region,
-                                            MJL_language, SCOP_language, DOAJ_language,
-                                            OA_topics, OA_primary_topics, OA_subfields, OA_fields, OA_domains, MJL_categories, JCR_categories, SJR_categories, SJR_areas, SCOP_ASJC_codes, DOAJ_LCC_codes, DOAJ_subjects, DOAJ_keywords,
-                                            JCR_edition, SCOP_coverage, SJR_coverage,
-                                            OA_open_access, SCOP_open_access, DOAJ_open_access, DOAJ_open_license_since, DOAJ_license, DOAJ_license_attributes, DOAJ_author_unrestricted_rights, DOAJ_open_citations, DOAJ_machine_readable_license,
-                                            DOAJ_review_process, DOAJ_average_weeks_for_publication, OA_APC_prices, DOAJ_APC_prices, DOAJ_other_fees, DOAJ_waiver_policy, DOAJ_deposit_policy, DOAJ_plagiarism_policy,
-                                            DOAJ_persistent_identifiers, DOAJ_preservation_services, DOAJ_national_library_preservation_services, SCOP_medline_sourced, OA_website, DOAJ_website,
-                                            JCR_JCI_2023, JCR_JCI_rank, JCR_JCI_quartile, JCR_JCI_percentile, JCR_JIF_2023, JCR_JIF_rank, JCR_JIF_quartile, JCR_JIF_percentile, JCR_JIF_5_years, JCR_JIF_5_years_quartile, JCR_JIF_no_self_cites,
-                                            JCR_immediacy_index, JCR_AIS, JCR_AIS_quartile, JCR_eigenfactor, JCR_eigenfactor_normalized, JCR_citing_half_life, JCR_cited_half_life, JCR_percent_articles_citable_items, JCR_percent_citable_open_access,
-                                            SJR_SJR, SJR_rank, SJR_best_quartile, SJR_h_index,
-                                            OA_total_articles, JCR_total_articles, SJR_total_articles_2023, SJR_total_articles_3_years, SJR_total_references, SJR_references_per_articles, OA_total_citations, JCR_total_citations, SJR_total_citations_3_years, SJR_citations_per_articles_2_years, JCR_citable_articles, SJR_citable_articles_3_years,
-                                            CWTS_percent_self_citations, CWTS_SNIP, CWTS_SNIP_lower_bound, CWTS_SNIP_upper_bound, CWTS_IPP, CWTS_IPP_lower_bound, CWTS_IPP_upper_bound, SJR_percent_female, SJR_SDG, SJR_overton)
-
 ddff_megamerge <- ddff_megamerge %>% mutate(across(where(is.character), ~ na_if(.x, "")))
 
 # nest repeted variables between ddbb
@@ -360,5 +340,19 @@ ddff_megamerge <- ddff_megamerge %>% nest(other_IDs = c(MJL_ID, JCR_ID, SCOP_ID,
                                           website = c(OA_website, DOAJ_website),
                                           total_articles = c(OA_total_articles, JCR_total_articles),
                                           total_citations = c(OA_total_citations, JCR_total_citations))
+
+# reorder simple and nested variables
+ddff_megamerge <- ddff_megamerge %>% select(OA_ID, other_IDs, OA_source_ID, other_source_IDs, ISSN_codes,
+                                            journal_name, journal_name_variants, publisher, country,
+                                            SCOP_main_publisher, DOAJ_other_organization, DOAJ_other_organization_country, SJR_region, language,
+                                            OA_topics, OA_primary_topics, OA_subfields, OA_fields, OA_domains, MJL_categories, JCR_categories, SJR_categories, SJR_areas, SCOP_ASJC_codes, DOAJ_LCC_codes, DOAJ_subjects, DOAJ_keywords,
+                                            JCR_edition, coverage, open_access, DOAJ_open_license_since, DOAJ_license, DOAJ_license_attributes, DOAJ_author_unrestricted_rights, DOAJ_open_citations, DOAJ_machine_readable_license,
+                                            DOAJ_review_process, DOAJ_average_weeks_for_publication, APC_prices, DOAJ_other_fees, DOAJ_waiver_policy, DOAJ_deposit_policy, DOAJ_plagiarism_policy,
+                                            DOAJ_persistent_identifiers, DOAJ_preservation_services, DOAJ_national_library_preservation_services, SCOP_medline_sourced, website,
+                                            JCR_JCI_2023, JCR_JCI_rank, JCR_JCI_quartile, JCR_JCI_percentile, JCR_JIF_2023, JCR_JIF_rank, JCR_JIF_quartile, JCR_JIF_percentile, JCR_JIF_5_years, JCR_JIF_5_years_quartile, JCR_JIF_no_self_cites,
+                                            JCR_immediacy_index, JCR_AIS, JCR_AIS_quartile, JCR_eigenfactor, JCR_eigenfactor_normalized, JCR_citing_half_life, JCR_cited_half_life, JCR_percent_articles_citable_items, JCR_percent_citable_open_access,
+                                            SJR_SJR, SJR_rank, SJR_best_quartile, SJR_h_index,
+                                            total_articles, SJR_total_articles_2023, SJR_total_articles_3_years, SJR_total_references, SJR_references_per_articles, total_citations, SJR_total_citations_3_years, SJR_citations_per_articles_2_years, JCR_citable_articles, SJR_citable_articles_3_years,
+                                            CWTS_percent_self_citations, CWTS_SNIP, CWTS_SNIP_lower_bound, CWTS_SNIP_upper_bound, CWTS_IPP, CWTS_IPP_lower_bound, CWTS_IPP_upper_bound, SJR_percent_female, SJR_SDG, SJR_overton)
 
 #write.csv(ddff_megamerge, "~/Desktop/OpenAlex_journals_dataset/mega_merge.csv")
