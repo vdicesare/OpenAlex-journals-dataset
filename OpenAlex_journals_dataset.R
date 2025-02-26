@@ -11,7 +11,7 @@ options(scipen = 999)
 
 ### MEGA JOURNALS DATAFRAME CONSTRUCTION
 # OpenAlex upload and data mining
-openalex <- list.files(path = "~/Desktop/Local.Journals/OpenAlex", pattern = "all_journals_and_articles_.*", full.names = TRUE)
+openalex <- list.files(path = "~/Desktop/OpenAlex_journals_dataset/OpenAlex", pattern = "all_journals_and_articles_.*", full.names = TRUE)
 openalex <- rbindlist(lapply(openalex, fread, sep = ","), fill = TRUE)
 openalex$journal_id <- as.numeric(as.character(openalex$journal_id))
 openalex$article_id <- as.numeric(as.character(openalex$article_id))
@@ -40,7 +40,7 @@ openalex_journals_topics <- openalex_articles %>% group_by(journal_id) %>%
                                                             primary_topic_display_name = concat_unique(primary_topic_display_name))
 
 # replace the subfield, field and domain codes with the corresponding tags from openalex_topics
-openalex_topics <- readxl::read_excel("~/Desktop/Local.Journals/OAtopics.xlsx")
+openalex_topics <- readxl::read_excel("~/Desktop/OpenAlex_journals_dataset/OAtopics.xlsx")
 subfield_lookup <- openalex_topics %>% select(subfield_id, subfield_name) %>%
                                        distinct()
 field_lookup <- openalex_topics %>% select(field_id, field_name) %>%
@@ -64,25 +64,25 @@ openalex_journals <- openalex_journals %>% left_join(openalex_journals_topics %>
 
 
 # MJL upload and data mining
-mjl_journals <- read.csv("~/Desktop/Local.Journals/MJL.csv")
+mjl_journals <- read.csv("~/Desktop/OpenAlex_journals_dataset/MJL.csv")
 mjl_journals <- mjl_journals %>% distinct()
 mjl_journals <- mjl_journals %>% group_by(journal_name, issn, eissn) %>%
                                  summarise(across(everything(), ~ paste(unique(.), collapse = ";")), .groups = "drop")
 
 
 # JCR upload and data mining
-jcr_journals <- list.files(path = "~/Desktop/Local.Journals/JCR", pattern = "VictoriaDi.*JCR_JournalResults.*", full.names = TRUE)
+jcr_journals <- list.files(path = "~/Desktop/OpenAlex_journals_dataset/JCR", pattern = "VictoriaDi.*JCR_JournalResults.*", full.names = TRUE)
 jcr_journals <- rbindlist(lapply(jcr_journals, fread, sep = ","), fill = TRUE)
 jcr_journals <- jcr_journals %>% group_by(`Journal name`, `JCR Abbreviation`, Publisher, ISSN, eISSN) %>%
                                  summarise(across(everything(), ~ paste(unique(.), collapse = ";")), .groups = "drop")
 jcr_journals <- jcr_journals %>% rename(journal_name = `Journal name`, issn = ISSN, eissn = eISSN)
 jcr_journals[jcr_journals == "N/A"] <- NA
-jcr_journals <- bind_rows(jcr_journals, read.csv("~/Desktop/Local.Journals/JCR/JCR_missing_journals.csv", check.names = FALSE) %>%
+jcr_journals <- bind_rows(jcr_journals, read.csv("~/Desktop/OpenAlex_journals_dataset/JCR/JCR_missing_journals.csv", check.names = FALSE) %>%
                             mutate(across(everything(), as.character)))
 
 
 # Scopus upload and data mining
-scopus_journals <- readxl::read_excel("~/Desktop/Local.Journals/Scopus.xlsx")
+scopus_journals <- readxl::read_excel("~/Desktop/OpenAlex_journals_dataset/Scopus.xlsx")
 scopus_journals <- scopus_journals %>% group_by(journal_name, issn, eissn) %>%
                                        summarise(across(everything(), ~ paste(unique(.), collapse = ";")), .groups = "drop")
 scopus_journals[scopus_journals == "NA"] <- NA
@@ -91,7 +91,7 @@ scopus_journals$eissn <- sub("^(.{4})(.{4})$", "\\1-\\2", scopus_journals$eissn)
 
 
 # DOAJ upload and data mining
-doaj_journals <- read.csv("~/Desktop/Local.Journals/DOAJ.csv")
+doaj_journals <- read.csv("~/Desktop/OpenAlex_journals_dataset/DOAJ.csv")
 doaj_journals$issn <- ifelse(!is.na(doaj_journals$issn) & doaj_journals$issn != "", 
                              str_pad(doaj_journals$issn, width = 8, side = "left", pad = "0"), 
                              doaj_journals$issn)
@@ -103,7 +103,7 @@ doaj_journals$eissn <- sub("^(.{4})(.{4})$", "\\1-\\2", doaj_journals$eissn)
 
 
 # SJR upload and data mining
-sjr_journals <- readxl::read_excel("~/Desktop/Local.Journals/SJR.xlsx")
+sjr_journals <- readxl::read_excel("~/Desktop/OpenAlex_journals_dataset/SJR.xlsx")
 sjr_journals <- sjr_journals %>% separate(eissn, into = c("eissn", "issn"), sep = ", ", extra = "merge", fill = "right") %>%
                                  mutate(issn = ifelse(is.na(issn), NA, issn))
 sjr_journals <- sjr_journals %>% group_by(journal_name, issn, eissn) %>%
@@ -113,7 +113,7 @@ sjr_journals$eissn <- sub("^(.{4})(.{4})$", "\\1-\\2", sjr_journals$eissn)
 
 
 # CWTS upload
-cwts_journals <- readxl::read_excel("~/Desktop/Local.Journals/CWTS.xlsx")
+cwts_journals <- readxl::read_excel("~/Desktop/OpenAlex_journals_dataset/CWTS.xlsx")
 
 
 # add unique identifiers to each dataframe
@@ -285,33 +285,33 @@ ddff_ISSNs_match <- ddff_ISSNs_match %>% group_by(OA_ID) %>%
 ddff_ISSNs_no_match <- ddff_ISSNs_match[rowSums(!is.na(ddff_ISSNs_match)) == 1, ]
 ddff_ISSNs_no_match <- ddff_ISSNs_no_match %>% left_join(select(openalex_journals, OA_ID, OA_ISSN_codes, OA_journal_name, OA_journal_name_variants), by = "OA_ID")
 ddff_ISSNs_no_match <- ddff_ISSNs_no_match %>% select(OA_ID, OA_ISSN_codes, OA_journal_name, OA_journal_name_variants)
-write.csv(ddff_ISSNs_no_match, "~/Desktop/Local.Journals/OA_titles_matching.csv")
+write.csv(ddff_ISSNs_no_match, "~/Desktop/OpenAlex_journals_dataset/titles_matching/OA_titles_matching.csv")
 
 
 # isolate the journals from the rest of the ddbb that don't match with OpenAlex through their ISSN codes in order to match via titles
 mjl_journals_no_match <- mjl_journals %>% anti_join(ddff_ISSNs_match, by = "MJL_ID") %>%
                                           select(MJL_ID, MJL_ISSN_codes, MJL_journal_name)
-write.csv(mjl_journals_no_match, "~/Desktop/Local.Journals/MJL_titles_matching.csv")
+#write.csv(mjl_journals_no_match, "~/Desktop/OpenAlex_journals_dataset/titles_matching/MJL_titles_matching.csv")
 
 jcr_journals_no_match <- jcr_journals %>% anti_join(ddff_ISSNs_match, by = "JCR_ID") %>%
-                                          select(JCR_ID, JCR_ISSN_codes, JCR_journal_name)
-write.csv(jcr_journals_no_match, "~/Desktop/Local.Journals/JCR_titles_matching.csv")
+                                          select(JCR_ID, JCR_ISSN_codes, JCR_journal_name, JCR_journal_name_variants)
+#write.csv(jcr_journals_no_match, "~/Desktop/OpenAlex_journals_dataset/titles_matching/JCR_titles_matching.csv")
 
 scopus_journals_no_match <- scopus_journals %>% anti_join(ddff_ISSNs_match, by = "SCOP_ID") %>%
-                                                select(SCOP_ID, SCOP_ISSN_codes, SCOP_journal_name)
-write.csv(scopus_journals_no_match, "~/Desktop/Local.Journals/SCOP_titles_matching.csv")
+                                                select(SCOP_ID, SCOP_ISSN_codes, SCOP_journal_name, SCOP_journal_name_variants)
+#write.csv(scopus_journals_no_match, "~/Desktop/OpenAlex_journals_dataset/titles_matching/SCOP_titles_matching.csv")
 
 doaj_journals_no_match <- doaj_journals %>% anti_join(ddff_ISSNs_match, by = "DOAJ_ID") %>%
-                                            select(DOAJ_ID, DOAJ_ISSN_codes, DOAJ_journal_name)
-write.csv(doaj_journals_no_match, "~/Desktop/Local.Journals/DOAJ_titles_matching.csv")
+                                            select(DOAJ_ID, DOAJ_ISSN_codes, DOAJ_journal_name, DOAJ_journal_name_variants)
+#write.csv(doaj_journals_no_match, "~/Desktop/OpenAlex_journals_dataset/titles_matching/DOAJ_titles_matching.csv")
 
 sjr_journals_no_match <- sjr_journals %>% anti_join(ddff_ISSNs_match, by = "SJR_ID") %>%
                                           select(SJR_ID, SJR_ISSN_codes, SJR_journal_name)
-write.csv(sjr_journals_no_match, "~/Desktop/Local.Journals/SJR_titles_matching.csv")
+#write.csv(sjr_journals_no_match, "~/Desktop/OpenAlex_journals_dataset/titles_matching/SJR_titles_matching.csv")
 
 cwts_journals_no_match <- cwts_journals %>% anti_join(ddff_ISSNs_match, by = "CWTS_ID") %>%
                                             select(CWTS_ID, CWTS_ISSN_codes, CWTS_journal_name)
-write.csv(cwts_journals_no_match, "~/Desktop/Local.Journals/CWTS_titles_matching.csv")
+#write.csv(cwts_journals_no_match, "~/Desktop/OpenAlex_journals_dataset/titles_matching/CWTS_titles_matching.csv")
 
 
 ### MEGA MERGE by ISSNs... (faltan los matches por títulos)
@@ -344,4 +344,4 @@ ddff_megamerge <- ddff_megamerge %>% select(OA_ID, MJL_ID, JCR_ID, SCOP_ID, DOAJ
                                             CWTS_percent_self_citations, CWTS_SNIP, CWTS_SNIP_lower_bound, CWTS_SNIP_upper_bound, CWTS_IPP, CWTS_IPP_lower_bound, CWTS_IPP_upper_bound, SJR_percent_female, SJR_SDG, SJR_overton)
 
 ddff_megamerge <- ddff_megamerge %>% mutate(across(where(is.character), ~ na_if(.x, "")))
-#write.csv(ddff_megamerge, "~/Desktop/Local.Journals/mega_merge.csv")
+#write.csv(ddff_megamerge, "~/Desktop/OpenAlex_journals_dataset/mega_merge.csv")
