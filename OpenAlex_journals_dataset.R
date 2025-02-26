@@ -285,7 +285,7 @@ ddff_ISSNs_match <- ddff_ISSNs_match %>% group_by(OA_ID) %>%
 ddff_ISSNs_no_match <- ddff_ISSNs_match[rowSums(!is.na(ddff_ISSNs_match)) == 1, ]
 ddff_ISSNs_no_match <- ddff_ISSNs_no_match %>% left_join(select(openalex_journals, OA_ID, OA_ISSN_codes, OA_journal_name, OA_journal_name_variants), by = "OA_ID")
 ddff_ISSNs_no_match <- ddff_ISSNs_no_match %>% select(OA_ID, OA_ISSN_codes, OA_journal_name, OA_journal_name_variants)
-write.csv(ddff_ISSNs_no_match, "~/Desktop/OpenAlex_journals_dataset/titles_matching/OA_titles_matching.csv")
+#write.csv(ddff_ISSNs_no_match, "~/Desktop/OpenAlex_journals_dataset/titles_matching/OA_titles_matching.csv")
 
 
 # isolate the journals from the rest of the ddbb that don't match with OpenAlex through their ISSN codes in order to match via titles
@@ -344,4 +344,21 @@ ddff_megamerge <- ddff_megamerge %>% select(OA_ID, MJL_ID, JCR_ID, SCOP_ID, DOAJ
                                             CWTS_percent_self_citations, CWTS_SNIP, CWTS_SNIP_lower_bound, CWTS_SNIP_upper_bound, CWTS_IPP, CWTS_IPP_lower_bound, CWTS_IPP_upper_bound, SJR_percent_female, SJR_SDG, SJR_overton)
 
 ddff_megamerge <- ddff_megamerge %>% mutate(across(where(is.character), ~ na_if(.x, "")))
+
+# nest repeted variables between ddbb
+ddff_megamerge <- ddff_megamerge %>% nest(other_IDs = c(MJL_ID, JCR_ID, SCOP_ID, DOAJ_ID, SJR_ID, CWTS_ID),
+                                          other_source_IDs = c(SCOP_source_ID, SJR_source_ID),
+                                          ISSN_codes = c(OA_ISSN_codes, MJL_ISSN_codes, JCR_ISSN_codes, SCOP_ISSN_codes, DOAJ_ISSN_codes, DOAJ_continues_ISSN, DOAJ_continued_by_ISSN, SJR_ISSN_codes, CWTS_ISSN_codes),
+                                          journal_name = c(OA_journal_name, MJL_journal_name, JCR_journal_name, SCOP_journal_name, DOAJ_journal_name, SJR_journal_name, CWTS_journal_name),
+                                          journal_name_variants = c(OA_journal_name_variants, JCR_journal_name_variants, SCOP_journal_name_variants, DOAJ_journal_name_variants),
+                                          publisher = c(OA_publisher, MJL_publisher, JCR_publisher, SCOP_publisher, DOAJ_publisher, SJR_publisher),
+                                          country = c(OA_publisher_country, MJL_publisher_country, DOAJ_publisher_country, SJR_publisher_country),
+                                          language = c(MJL_language, SCOP_language, DOAJ_language),
+                                          coverage = c(SCOP_coverage, SJR_coverage),
+                                          open_access = c(OA_open_access, SCOP_open_access, DOAJ_open_access),
+                                          APC_prices = c(OA_APC_prices, DOAJ_APC_prices),
+                                          website = c(OA_website, DOAJ_website),
+                                          total_articles = c(OA_total_articles, JCR_total_articles),
+                                          total_citations = c(OA_total_citations, JCR_total_citations))
+
 #write.csv(ddff_megamerge, "~/Desktop/OpenAlex_journals_dataset/mega_merge.csv")
