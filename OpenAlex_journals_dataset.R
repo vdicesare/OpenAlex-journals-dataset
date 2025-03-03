@@ -1,3 +1,4 @@
+library(parallel)
 library(tidyverse)
 library(dplyr)
 library(tidyr)
@@ -354,5 +355,55 @@ ddff_megamerge <- ddff_megamerge %>% select(OA_ID, other_IDs, OA_source_ID, othe
                                             SJR_SJR, SJR_rank, SJR_best_quartile, SJR_h_index,
                                             total_articles, SJR_total_articles_2023, SJR_total_articles_3_years, SJR_total_references, SJR_references_per_articles, total_citations, SJR_total_citations_3_years, SJR_citations_per_articles_2_years, JCR_citable_articles, SJR_citable_articles_3_years,
                                             CWTS_percent_self_citations, CWTS_SNIP, CWTS_SNIP_lower_bound, CWTS_SNIP_upper_bound, CWTS_IPP, CWTS_IPP_lower_bound, CWTS_IPP_upper_bound, SJR_percent_female, SJR_SDG, SJR_overton)
+
+
+### LOCAL VARIABLES COMPUTATION
+## REFERENCES
+# read files and split into 20 dataframes for processing
+references_files <- list.files(path = "~/Desktop/OpenAlex_journals_dataset/references_local_variable", pattern = "^references_local_variable_\\d{12}$", full.names = TRUE)
+num_parts <- 20  
+num_files <- length(references_files)
+chunk_size <- ceiling(num_files / num_parts)
+for (i in 1:num_parts) {chunk_files <- references_files[((i - 1) * chunk_size + 1):min(i * chunk_size, num_files)]
+                        chunk_files <- chunk_files[!is.na(chunk_files)]  # Remove any NA values (in case of fewer files)
+                        chunk_data <- rbindlist(lapply(chunk_files, fread), fill = TRUE)
+                        assign(paste0("references_part_", i), chunk_data, envir = .GlobalEnv)
+                        rm(chunk_data)
+                        gc()}
+
+# compute the references proportion recurrently per each dataframe partition (references_part_1 until references_part_20)
+references_part_1 <- references_part_1 %>% group_by(journal_id) %>%
+                                           mutate(refs_total = n_distinct(reference_id)) %>%
+                                           ungroup()
+references_part_1 <- references_part_1 %>% group_by(journal_id, country) %>%
+                                           mutate(refs_count = n()) %>%
+                                           ungroup()
+references_part_1 <- within(references_part_1, rm(article_id, reference_id))
+references_part_1 <- references_part_1 %>% distinct()
+
+# merge all parts together without loosing rows
+references_local_variable <- rbind(references_part_1, references_part_2, references_part_3, references_part_4, references_part_5, references_part_6,
+                                   references_part_7, references_part_8, references_part_9, references_part_10, references_part_11, references_part_12,
+                                   references_part_13, references_part_14, references_part_15, references_part_16, references_part_17, references_part_18,
+                                   references_part_19, references_part_20, fill = TRUE)
+
+# compute variables refs_count, refs_total and refs_prop per unique combination of journal and its most referenced country
+references_local_variable <- references_local_variable %>% group_by(journal_id, journal_name, country) %>%
+                                                           summarise(refs_count = sum(refs_count, na.rm = TRUE), .groups = "drop")
+references_local_variable <- references_local_variable %>% filter(!(journal_id == 1 & journal_name == "TRUE" & country == "TRUE" & refs_count == 1))
+references_local_variable <- references_local_variable %>% group_by(journal_id, journal_name) %>%
+                                                           mutate(refs_total = sum(refs_count, na.rm = TRUE)) %>%
+                                                           ungroup()
+references_local_variable <- references_local_variable %>% group_by(journal_id, journal_name) %>%
+                                                           filter(refs_count == max(refs_count)) %>%
+                                                           ungroup()
+references_local_variable <- references_local_variable %>% mutate(refs_prop = round(refs_count / refs_total, 2))
+
+
+# CITATIONS
+
+
+# LANGUAGES
+
 
 #write.csv(ddff_megamerge, "~/Desktop/OpenAlex_journals_dataset/mega_merge.csv")
