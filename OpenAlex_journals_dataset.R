@@ -370,8 +370,8 @@ for (i in 1:num_parts) {chunk_files <- references_files[((i - 1) * chunk_size + 
                         assign(paste0("references_part_", i), chunk_data, envir = .GlobalEnv)
                         rm(chunk_data)
                         gc()}
-
-# compute the references proportion recurrently per each dataframe partition (references_part_1 until references_part_20)
+## seguir corrigiendo acá:
+# compute the refs_count and refs_total variables recurrently per each dataframe partition (references_part_1 until references_part_20)
 references_part_1 <- references_part_1 %>% group_by(journal_id) %>%
                                            mutate(refs_total = n_distinct(reference_id)) %>%
                                            ungroup()
@@ -401,6 +401,22 @@ references_local_variable <- references_local_variable %>% mutate(refs_prop = ro
 
 
 # CITATIONS
+citations_local_variable <- list.files(path = "~/Desktop/OpenAlex_journals_dataset/citations_local_variable", pattern = "^citations_local_variable_\\d{12}$", full.names = TRUE)
+citations_local_variable <- rbindlist(lapply(citations_local_variable, fread, sep = ","), fill = TRUE)
+
+# compute variables cits_count, cits_total and cits_prop per unique combination of journal and its most citing country
+citations_local_variable <- citations_local_variable %>% group_by(journal_id, journal_name, country) %>%
+                                                         mutate(cits_count = n()) %>%
+                                                         ungroup()
+citations_local_variable <- within(citations_local_variable, rm(article_id, citing_work_id))
+citations_local_variable <- citations_local_variable %>% distinct()
+citations_local_variable <- citations_local_variable %>% group_by(journal_id, journal_name) %>%
+                                                         mutate(cits_total = sum(cits_count, na.rm = TRUE)) %>%
+                                                         ungroup()
+citations_local_variable <- citations_local_variable %>% group_by(journal_id, journal_name) %>%
+                                                         filter(cits_count == max(cits_count)) %>%
+                                                         ungroup()
+citations_local_variable <- citations_local_variable %>% mutate(cits_prop = round(cits_count / cits_total, 2))
 
 
 # LANGUAGES
