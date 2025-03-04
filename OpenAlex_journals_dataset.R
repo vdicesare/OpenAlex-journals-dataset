@@ -370,16 +370,16 @@ for (i in 1:num_parts) {chunk_files <- references_files[((i - 1) * chunk_size + 
                         assign(paste0("references_part_", i), chunk_data, envir = .GlobalEnv)
                         rm(chunk_data)
                         gc()}
-## seguir corrigiendo acá:
+
 # compute the refs_count and refs_total variables recurrently per each dataframe partition (references_part_1 until references_part_20)
-references_part_1 <- references_part_1 %>% group_by(journal_id) %>%
-                                           mutate(refs_total = n_distinct(reference_id)) %>%
-                                           ungroup()
-references_part_1 <- references_part_1 %>% group_by(journal_id, country) %>%
+references_part_1 <- references_part_1 %>% group_by(journal_id, journal_name, country) %>%
                                            mutate(refs_count = n()) %>%
                                            ungroup()
 references_part_1 <- within(references_part_1, rm(article_id, reference_id))
 references_part_1 <- references_part_1 %>% distinct()
+references_part_1 <- references_part_1 %>% group_by(journal_id, journal_name) %>%
+                                           mutate(refs_total = sum(refs_count, na.rm = TRUE)) %>%
+                                           ungroup()
 
 # merge all parts together without loosing rows
 references_local_variable <- rbind(references_part_1, references_part_2, references_part_3, references_part_4, references_part_5, references_part_6,
