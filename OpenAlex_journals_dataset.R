@@ -315,6 +315,117 @@ cwts_journals_no_match <- cwts_journals %>% anti_join(ddff_ISSNs_match, by = "CW
 #write.csv(cwts_journals_no_match, "~/Desktop/OpenAlex_journals_dataset/titles_matching/CWTS_titles_matching.csv")
 
 
+# prepare all journals_no_match dataframes to match each other, leaving OpenAlex out
+mjl_journals_no_match <- mjl_journals_no_match %>% mutate(MJL_ISSN_codes = strsplit(as.character(MJL_ISSN_codes), ";")) %>%
+                                                   unnest(MJL_ISSN_codes) %>%
+                                                   mutate(MJL_ISSN_codes = gsub("\\s+", "", MJL_ISSN_codes)) %>%
+                                                   filter(MJL_ISSN_codes != "") %>%
+                                                   distinct(MJL_ID, MJL_ISSN_codes, MJL_journal_name)
+
+jcr_journals_no_match <- jcr_journals_no_match %>% mutate(JCR_ISSN_codes = strsplit(as.character(JCR_ISSN_codes), ";")) %>%
+                                                   unnest(JCR_ISSN_codes) %>%
+                                                   mutate(JCR_ISSN_codes = gsub("\\s+", "", JCR_ISSN_codes)) %>%
+                                                   filter(JCR_ISSN_codes != "") %>%
+                                                   distinct(JCR_ID, JCR_ISSN_codes, JCR_journal_name)
+
+scopus_journals_no_match <- scopus_journals_no_match %>% mutate(SCOP_ISSN_codes = strsplit(as.character(SCOP_ISSN_codes), ";")) %>%
+                                                         unnest(SCOP_ISSN_codes) %>%
+                                                         mutate(SCOP_ISSN_codes = gsub("\\s+", "", SCOP_ISSN_codes)) %>%
+                                                         filter(SCOP_ISSN_codes != "") %>%
+                                                         distinct(SCOP_ID, SCOP_ISSN_codes, SCOP_journal_name)
+
+doaj_journals_no_match <- doaj_journals_no_match %>% mutate(DOAJ_ISSN_codes = strsplit(as.character(DOAJ_ISSN_codes), ";")) %>%
+                                                     unnest(DOAJ_ISSN_codes) %>%
+                                                     mutate(DOAJ_ISSN_codes = gsub("\\s+", "", DOAJ_ISSN_codes)) %>%
+                                                     filter(DOAJ_ISSN_codes != "") %>%
+                                                     distinct(DOAJ_ID, DOAJ_ISSN_codes, DOAJ_journal_name)
+
+sjr_journals_no_match <- sjr_journals_no_match %>% mutate(SJR_ISSN_codes = strsplit(as.character(SJR_ISSN_codes), ";")) %>%
+                                                   unnest(SJR_ISSN_codes) %>%
+                                                   mutate(SJR_ISSN_codes = gsub("\\s+", "", SJR_ISSN_codes)) %>%
+                                                   filter(SJR_ISSN_codes != "") %>%
+                                                   distinct(SJR_ID, SJR_ISSN_codes, SJR_journal_name)
+
+cwts_journals_no_match <- cwts_journals_no_match %>% mutate(CWTS_ISSN_codes = strsplit(as.character(CWTS_ISSN_codes), ";")) %>%
+                                                     unnest(CWTS_ISSN_codes) %>%
+                                                     mutate(CWTS_ISSN_codes = gsub("\\s+", "", CWTS_ISSN_codes)) %>%
+                                                     filter(CWTS_ISSN_codes != "") %>%
+                                                     distinct(CWTS_ID, CWTS_ISSN_codes, CWTS_journal_name)
+
+
+# match all dataframes by the journals' ISSN codes to process their DOIs later
+ddff_DOIs <- mjl_journals_no_match %>% full_join(jcr_journals_no_match, by = c("MJL_ISSN_codes" = "JCR_ISSN_codes"), relationship = "many-to-many") %>%
+                                       full_join(scopus_journals_no_match, by = c("MJL_ISSN_codes" = "SCOP_ISSN_codes"), relationship = "many-to-many") %>%
+                                       full_join(doaj_journals_no_match, by = c("MJL_ISSN_codes" = "DOAJ_ISSN_codes"), relationship = "many-to-many") %>%
+                                       full_join(sjr_journals_no_match, by = c("MJL_ISSN_codes" = "SJR_ISSN_codes"), relationship = "many-to-many") %>%
+                                       full_join(cwts_journals_no_match, by = c("MJL_ISSN_codes" = "CWTS_ISSN_codes"), relationship = "many-to-many") %>%
+                                       rename(ISSN_code = MJL_ISSN_codes)
+
+
+# remove ISSN code variable and duplicated rows
+ddff_DOIs <- subset(ddff_DOIs, select = -ISSN_code)
+ddff_DOIs <- ddff_DOIs %>% distinct()
+
+write.csv(ddff_DOIs, "~/Desktop/ddff_DOIs.csv", row.names = FALSE)
+ddff_DOIs_MJL <- read.csv("~/Desktop/ddff_DOIs_MJL.csv")
+# Combine rows by MJL_ID, keeping non-NA values from each column
+ddff_DOIs_MJL <- ddff_DOIs_MJL %>% group_by(MJL_ID) %>%
+                                   summarise(across(everything(), ~ {non_na_vals <- na.omit(.)
+                                   if (length(non_na_vals) > 0) first(non_na_vals) else NA})) %>%
+                                   ungroup()
+
+ddff_DOIs_JCR <- read.csv("~/Desktop/ddff_DOIs_JCR.csv")
+ddff_DOIs_JCR <- ddff_DOIs_JCR %>% group_by(JCR_ID) %>%
+                                   summarise(across(everything(), ~ {non_na_vals <- na.omit(.)
+                                   if (length(non_na_vals) > 0) first(non_na_vals) else NA})) %>%
+                                   ungroup()
+
+ddff_DOIs_SCOP <- read.csv("~/Desktop/ddff_DOIs_SCOP.csv")
+ddff_DOIs_SCOP <- ddff_DOIs_SCOP %>% group_by(SCOP_ID) %>%
+                                     summarise(across(everything(), ~ {non_na_vals <- na.omit(.)
+                                     if (length(non_na_vals) > 0) first(non_na_vals) else NA})) %>%
+                                     ungroup()
+
+ddff_DOIs_DOAJ <- read.csv("~/Desktop/ddff_DOIs_DOAJ.csv")
+ddff_DOIs_DOAJ <- ddff_DOIs_DOAJ %>% group_by(DOAJ_ID) %>%
+                                     summarise(across(everything(), ~ {non_na_vals <- na.omit(.)
+                                     if (length(non_na_vals) > 0) first(non_na_vals) else NA})) %>%
+                                     ungroup()
+
+ddff_DOIs_SJR <- read.csv("~/Desktop/ddff_DOIs_SJR.csv")
+ddff_DOIs_SJR <- ddff_DOIs_SJR %>% group_by(SJR_ID) %>%
+                                   summarise(across(everything(), ~ {non_na_vals <- na.omit(.)
+                                   if (length(non_na_vals) > 0) first(non_na_vals) else NA})) %>%
+                                   ungroup()
+
+ddff_DOIs_CWTS <- read.csv("~/Desktop/ddff_DOIs_CWTS.csv")
+ddff_DOIs_CWTS <- ddff_DOIs_CWTS %>% group_by(CWTS_ID) %>%
+                                     summarise(across(everything(), ~ {non_na_vals <- na.omit(.)
+                                     if (length(non_na_vals) > 0) first(non_na_vals) else NA})) %>%
+                                     ungroup()
+
+ddff_DOIs <- bind_rows(ddff_DOIs_MJL, ddff_DOIs_JCR, ddff_DOIs_SCOP, ddff_DOIs_DOAJ, ddff_DOIs_SJR, ddff_DOIs_CWTS)
+
+ddff_DOIs <- ddff_DOIs %>% select(MJL_ID, MJL_journal_name, JCR_ID, JCR_journal_name, SCOP_ID, SCOP_journal_name, DOAJ_ID,
+                                  DOAJ_journal_name, SJR_ID, SJR_journal_name, CWTS_ID, CWTS_journal_name) %>%
+                           mutate(Match_Status = ifelse(rowSums(!is.na(select(., MJL_ID, JCR_ID, SCOP_ID, DOAJ_ID, SJR_ID, CWTS_ID))) > 1, "Matched", "Unmatched"))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ### MEGA MERGE by ISSNs... (faltan los matches por títulos)
 ddff_megamerge <- ddff_ISSNs_match %>% left_join(openalex_journals, by = "OA_ID") %>%
                                        left_join(mjl_journals, by = "MJL_ID") %>%
@@ -420,6 +531,10 @@ citations_local_variable <- citations_local_variable %>% mutate(cits_prop = roun
 
 
 # LANGUAGES
+# ddff_megamerge, buscar la presencia de "ENG" o "English" en la variable anidada language. Guardar como 1-0 en una nueva variable languages_local_variable
+
+
+
 
 
 #write.csv(ddff_megamerge, "~/Desktop/OpenAlex_journals_dataset/mega_merge.csv")
