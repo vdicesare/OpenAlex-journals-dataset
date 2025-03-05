@@ -366,39 +366,41 @@ ddff_DOIs <- mjl_journals_no_match %>% full_join(jcr_journals_no_match, by = c("
 ddff_DOIs <- subset(ddff_DOIs, select = -ISSN_code)
 ddff_DOIs <- ddff_DOIs %>% distinct()
 
-write.csv(ddff_DOIs, "~/Desktop/ddff_DOIs.csv", row.names = FALSE)
-ddff_DOIs_MJL <- read.csv("~/Desktop/ddff_DOIs_MJL.csv")
-# Combine rows by MJL_ID, keeping non-NA values from each column
+
+# export the dataframes merge without OpenAlex, import them separately to process duplicated rows and merge again identifying their matching status
+write.csv(ddff_DOIs, "~/Desktop/OpenAlex_journals_dataset/DOIs_matching/ddff_DOIs.csv", row.names = FALSE)
+
+ddff_DOIs_MJL <- read.csv("~/Desktop/OpenAlex_journals_dataset/DOIs_matching/ddff_DOIs_MJL.csv")
 ddff_DOIs_MJL <- ddff_DOIs_MJL %>% group_by(MJL_ID) %>%
                                    summarise(across(everything(), ~ {non_na_vals <- na.omit(.)
                                    if (length(non_na_vals) > 0) first(non_na_vals) else NA})) %>%
                                    ungroup()
 
-ddff_DOIs_JCR <- read.csv("~/Desktop/ddff_DOIs_JCR.csv")
+ddff_DOIs_JCR <- read.csv("~/Desktop/OpenAlex_journals_dataset/DOIs_matching/ddff_DOIs_JCR.csv")
 ddff_DOIs_JCR <- ddff_DOIs_JCR %>% group_by(JCR_ID) %>%
                                    summarise(across(everything(), ~ {non_na_vals <- na.omit(.)
                                    if (length(non_na_vals) > 0) first(non_na_vals) else NA})) %>%
                                    ungroup()
 
-ddff_DOIs_SCOP <- read.csv("~/Desktop/ddff_DOIs_SCOP.csv")
+ddff_DOIs_SCOP <- read.csv("~/Desktop/OpenAlex_journals_dataset/DOIs_matching/ddff_DOIs_SCOP.csv")
 ddff_DOIs_SCOP <- ddff_DOIs_SCOP %>% group_by(SCOP_ID) %>%
                                      summarise(across(everything(), ~ {non_na_vals <- na.omit(.)
                                      if (length(non_na_vals) > 0) first(non_na_vals) else NA})) %>%
                                      ungroup()
 
-ddff_DOIs_DOAJ <- read.csv("~/Desktop/ddff_DOIs_DOAJ.csv")
+ddff_DOIs_DOAJ <- read.csv("~/Desktop/OpenAlex_journals_dataset/DOIs_matching/ddff_DOIs_DOAJ.csv")
 ddff_DOIs_DOAJ <- ddff_DOIs_DOAJ %>% group_by(DOAJ_ID) %>%
                                      summarise(across(everything(), ~ {non_na_vals <- na.omit(.)
                                      if (length(non_na_vals) > 0) first(non_na_vals) else NA})) %>%
                                      ungroup()
 
-ddff_DOIs_SJR <- read.csv("~/Desktop/ddff_DOIs_SJR.csv")
+ddff_DOIs_SJR <- read.csv("~/Desktop/OpenAlex_journals_dataset/DOIs_matching/ddff_DOIs_SJR.csv")
 ddff_DOIs_SJR <- ddff_DOIs_SJR %>% group_by(SJR_ID) %>%
                                    summarise(across(everything(), ~ {non_na_vals <- na.omit(.)
                                    if (length(non_na_vals) > 0) first(non_na_vals) else NA})) %>%
                                    ungroup()
 
-ddff_DOIs_CWTS <- read.csv("~/Desktop/ddff_DOIs_CWTS.csv")
+ddff_DOIs_CWTS <- read.csv("~/Desktop/OpenAlex_journals_dataset/DOIs_matching/ddff_DOIs_CWTS.csv")
 ddff_DOIs_CWTS <- ddff_DOIs_CWTS %>% group_by(CWTS_ID) %>%
                                      summarise(across(everything(), ~ {non_na_vals <- na.omit(.)
                                      if (length(non_na_vals) > 0) first(non_na_vals) else NA})) %>%
@@ -411,19 +413,7 @@ ddff_DOIs <- ddff_DOIs %>% select(MJL_ID, MJL_journal_name, JCR_ID, JCR_journal_
                            mutate(Match_Status = ifelse(rowSums(!is.na(select(., MJL_ID, JCR_ID, SCOP_ID, DOAJ_ID, SJR_ID, CWTS_ID))) > 1, "Matched", "Unmatched"))
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+# sample for Camryn
 
 
 ### MEGA MERGE by ISSNs... (faltan los matches por títulos)
