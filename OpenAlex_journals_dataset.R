@@ -368,7 +368,7 @@ ddff_DOIs <- ddff_DOIs %>% distinct()
 
 
 # export the dataframes merge without OpenAlex, import them separately to process duplicated rows and merge again identifying their matching status
-write.csv(ddff_DOIs, "~/Desktop/OpenAlex_journals_dataset/DOIs_matching/ddff_DOIs.csv", row.names = FALSE)
+#write.csv(ddff_DOIs, "~/Desktop/OpenAlex_journals_dataset/DOIs_matching/ddff_DOIs.csv", row.names = FALSE)
 
 ddff_DOIs_MJL <- read.csv("~/Desktop/OpenAlex_journals_dataset/DOIs_matching/ddff_DOIs_MJL.csv")
 ddff_DOIs_MJL <- ddff_DOIs_MJL %>% group_by(MJL_ID) %>%
@@ -413,7 +413,9 @@ ddff_DOIs <- ddff_DOIs %>% select(MJL_ID, MJL_journal_name, JCR_ID, JCR_journal_
                            mutate(Match_Status = ifelse(rowSums(!is.na(select(., MJL_ID, JCR_ID, SCOP_ID, DOAJ_ID, SJR_ID, CWTS_ID))) > 1, "Matched", "Unmatched"))
 
 
-# sample for Camryn
+# create a 10% random sample for manual checking of the presence of these journals' articles DOIs in OpenAlex
+ddff_DOIs_sample <- ddff_DOIs %>% sample_frac(0.10)
+write.csv(ddff_DOIs_sample, "~/Desktop/OpenAlex_journals_dataset/DOIs_matching/ddff_DOIs_sample.csv", row.names = FALSE)
 
 
 ### MEGA MERGE by ISSNs... (faltan los matches por títulos)
