@@ -284,9 +284,9 @@ ddff_ISSNs_match <- ddff_ISSNs_match %>% group_by(OA_ID) %>%
 
 # store separately the rows where there's only one OpenAlex ID and incorporate the corresponding journals' titles
 ddff_ISSNs_no_match <- ddff_ISSNs_match[rowSums(!is.na(ddff_ISSNs_match)) == 1, ]
-ddff_ISSNs_no_match <- ddff_ISSNs_no_match %>% left_join(select(openalex_journals, OA_ID, OA_ISSN_codes, OA_journal_name, OA_journal_name_variants), by = "OA_ID")
-ddff_ISSNs_no_match <- ddff_ISSNs_no_match %>% select(OA_ID, OA_ISSN_codes, OA_journal_name, OA_journal_name_variants)
-#write.csv(ddff_ISSNs_no_match, "~/Desktop/OpenAlex_journals_dataset/titles_matching/OA_titles_matching.csv")
+ddff_ISSNs_no_match <- ddff_ISSNs_no_match %>% left_join(select(openalex_journals, OA_ID, OA_ISSN_codes, OA_journal_name, OA_journal_name_variants, OA_total_articles, OA_total_citations), by = "OA_ID")
+ddff_ISSNs_no_match <- ddff_ISSNs_no_match %>% select(OA_ID, OA_ISSN_codes, OA_journal_name, OA_journal_name_variants, OA_total_articles, OA_total_citations)
+write.csv(ddff_ISSNs_no_match, "~/Desktop/OpenAlex_journals_dataset/titles_matching/OA_titles_matching.csv")
 
 
 # isolate the journals from the rest of the ddbb that don't match with OpenAlex through their ISSN codes in order to match via titles
@@ -418,7 +418,7 @@ ddff_DOIs_sample <- ddff_DOIs %>% sample_frac(0.10)
 write.csv(ddff_DOIs_sample, "~/Desktop/OpenAlex_journals_dataset/DOIs_matching/ddff_DOIs_sample.csv", row.names = FALSE)
 
 
-### MEGA MERGE by ISSNs... (faltan los matches por títulos)
+### MEGA MERGE by ISSNs... (faltan los matches por títulos, chequear los resultados de Camryn manualmente)
 ddff_megamerge <- ddff_ISSNs_match %>% left_join(openalex_journals, by = "OA_ID") %>%
                                        left_join(mjl_journals, by = "MJL_ID") %>%
                                        left_join(jcr_journals, by = "JCR_ID") %>%
@@ -523,7 +523,7 @@ citations_local_variable <- citations_local_variable %>% mutate(cits_prop = roun
 
 
 # LANGUAGES
-# ddff_megamerge, buscar la presencia de "ENG" o "English" en la variable anidada language. Guardar como 1-0 en una nueva variable languages_local_variable
+# ddff_megamerge, buscar la presencia de "ENG" o "English" en la variable anidada language. Traer los datos language de OpenAlex. Guardar como 1-0 en una nueva variable languages_local_variable
 
 
 
