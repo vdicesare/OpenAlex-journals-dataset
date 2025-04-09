@@ -284,8 +284,8 @@ ddff_ISSNs_match <- ddff_ISSNs_match %>% group_by(OA_ID) %>%
 
 # store separately the rows where there's only one OpenAlex ID and incorporate the corresponding journals' titles
 ddff_ISSNs_no_match <- ddff_ISSNs_match[rowSums(!is.na(ddff_ISSNs_match)) == 1, ]
-ddff_ISSNs_no_match <- ddff_ISSNs_no_match %>% left_join(select(openalex_journals, OA_ID, OA_ISSN_codes, OA_journal_name, OA_journal_name_variants, OA_total_articles, OA_total_citations), by = "OA_ID")
-ddff_ISSNs_no_match <- ddff_ISSNs_no_match %>% select(OA_ID, OA_ISSN_codes, OA_journal_name, OA_journal_name_variants, OA_total_articles, OA_total_citations)
+ddff_ISSNs_no_match <- ddff_ISSNs_no_match %>% left_join(select(openalex_journals, OA_ID, OA_source_ID, OA_ISSN_codes, OA_journal_name, OA_journal_name_variants, OA_total_articles), by = "OA_ID")
+ddff_ISSNs_no_match <- ddff_ISSNs_no_match %>% select(OA_ID, OA_source_ID, OA_ISSN_codes, OA_journal_name, OA_journal_name_variants, OA_total_articles)
 write.csv(ddff_ISSNs_no_match, "~/Desktop/OpenAlex_journals_dataset/titles_matching/OA_titles_matching.csv")
 
 
@@ -410,23 +410,60 @@ ddff_DOIs <- bind_rows(ddff_DOIs_MJL, ddff_DOIs_JCR, ddff_DOIs_SCOP, ddff_DOIs_D
 
 ddff_DOIs <- ddff_DOIs %>% select(MJL_ID, MJL_journal_name, JCR_ID, JCR_journal_name, SCOP_ID, SCOP_journal_name, DOAJ_ID,
                                   DOAJ_journal_name, SJR_ID, SJR_journal_name, CWTS_ID, CWTS_journal_name) %>%
-                           mutate(Match_Status = ifelse(rowSums(!is.na(select(., MJL_ID, JCR_ID, SCOP_ID, DOAJ_ID, SJR_ID, CWTS_ID))) > 1, "Matched", "Unmatched"))
+                                  mutate(Match_Status = ifelse(rowSums(!is.na(select(., MJL_ID, JCR_ID, SCOP_ID, DOAJ_ID, SJR_ID, CWTS_ID))) > 1, "Matched", "Unmatched"))
+
+ddff_DOIs <- ddff_DOIs %>% select(SCOP_ID, MJL_ID, JCR_ID, DOAJ_ID, SJR_ID, CWTS_ID) %>%
+                           distinct(SCOP_ID, .keep_all = TRUE)
+ddff_DOIs <- ddff_DOIs %>% slice(-c(1288, 5))
 
 
-# create a 10% random sample for manual checking of the presence of these journals' articles DOIs in OpenAlex
-ddff_DOIs_sample <- ddff_DOIs %>% sample_frac(0.10)
-write.csv(ddff_DOIs_sample, "~/Desktop/OpenAlex_journals_dataset/DOIs_matching/ddff_DOIs_sample.csv", row.names = FALSE)
+### MEGA MERGE
+# by ISSNs
+ddff_ISSNs_megamerge <- ddff_ISSNs_match %>% left_join(openalex_journals, by = "OA_ID") %>%
+                                             left_join(mjl_journals, by = "MJL_ID") %>%
+                                             left_join(jcr_journals, by = "JCR_ID") %>%
+                                             left_join(scopus_journals, by = "SCOP_ID") %>%
+                                             left_join(doaj_journals, by = "DOAJ_ID") %>%
+                                             left_join(sjr_journals, by = "SJR_ID") %>%
+                                             left_join(cwts_journals, by = "CWTS_ID")
 
 
-### MEGA MERGE by ISSNs... (faltan los matches por títulos, chequear los resultados de Camryn manualmente)
-ddff_megamerge <- ddff_ISSNs_match %>% left_join(openalex_journals, by = "OA_ID") %>%
-                                       left_join(mjl_journals, by = "MJL_ID") %>%
-                                       left_join(jcr_journals, by = "JCR_ID") %>%
-                                       left_join(scopus_journals, by = "SCOP_ID") %>%
-                                       left_join(doaj_journals, by = "DOAJ_ID") %>%
-                                       left_join(sjr_journals, by = "SJR_ID") %>%
-                                       left_join(cwts_journals, by = "CWTS_ID")
+# by titles
+ddff_titles_match <- readxl::read_excel("~/Desktop/OpenAlex_journals_dataset/ddff_titles_match.xlsx")
+ddff_titles_megamerge <- ddff_titles_match %>% left_join(openalex_journals, by = "OA_ID") %>%
+                                               left_join(mjl_journals, by = "MJL_ID") %>%
+                                               left_join(jcr_journals, by = "JCR_ID") %>%
+                                               left_join(scopus_journals, by = "SCOP_ID") %>%
+                                               left_join(doaj_journals, by = "DOAJ_ID") %>%
+                                               left_join(sjr_journals, by = "SJR_ID") %>%
+                                               left_join(cwts_journals, by = "CWTS_ID")
 
+
+# by DOIs
+ddff_DOIs_match <- read.csv("~/Desktop/OpenAlex_journals_dataset/ddff_DOIs_match.csv")
+ddff_DOIs_match <- ddff_DOIs_match %>% mutate(SCOP_source_ID = as.character(SCOP_source_ID)) %>%
+                                       left_join(scopus_journals %>% select(SCOP_source_ID, SCOP_ID),
+                                                 by = "SCOP_source_ID")
+ddff_DOIs_match <- ddff_DOIs_match %>% filter(!is.na(SCOP_ID))
+ddff_DOIs_match <- ddff_DOIs_match %>% left_join(ddff_DOIs, by = "SCOP_ID")
+
+ddff_DOIs_megamerge <- ddff_DOIs_match %>% left_join(openalex_journals, by = "OA_ID") %>%
+                                           left_join(mjl_journals, by = "MJL_ID") %>%
+                                           left_join(jcr_journals, by = "JCR_ID") %>%
+                                           left_join(scopus_journals, by = "SCOP_ID") %>%
+                                           left_join(doaj_journals, by = "DOAJ_ID") %>%
+                                           left_join(sjr_journals, by = "SJR_ID") %>%
+                                           left_join(cwts_journals, by = "CWTS_ID")
+
+
+# merge of partial ISSNs, titles and DOIs merges in one final mega dataframe
+ddff_megamerge <- bind_rows(ddff_ISSNs_megamerge, ddff_titles_megamerge, ddff_DOIs_megamerge)
+
+# add remaining OpenAlex journals
+openalex_journals_no_match <- openalex_journals %>% filter(!(OA_ID %in% ddff_megamerge$OA_ID))
+ddff_megamerge <- bind_rows(ddff_megamerge, openalex_journals_no_match)
+
+ddff_megamerge <- ddff_megamerge %>% select(-SCOP_source_ID.x, -SCOP_source_ID.y)
 ddff_megamerge <- ddff_megamerge %>% mutate(across(where(is.character), ~ na_if(.x, "")))
 
 # nest repeted variables between ddbb
@@ -460,7 +497,7 @@ ddff_megamerge <- ddff_megamerge %>% select(OA_ID, other_IDs, OA_source_ID, othe
                                             CWTS_percent_self_citations, CWTS_SNIP, CWTS_SNIP_lower_bound, CWTS_SNIP_upper_bound, CWTS_IPP, CWTS_IPP_lower_bound, CWTS_IPP_upper_bound, SJR_percent_female, SJR_SDG, SJR_overton)
 
 
-### LOCAL VARIABLES COMPUTATION
+### LOCAL VARIABLES COMPUTATION                  ¡¡SEGUIR POR ACÁ!!
 ## REFERENCES
 # read files and split into 20 dataframes for processing
 references_files <- list.files(path = "~/Desktop/OpenAlex_journals_dataset/references_local_variable", pattern = "^references_local_variable_\\d{12}$", full.names = TRUE)
@@ -468,7 +505,7 @@ num_parts <- 20
 num_files <- length(references_files)
 chunk_size <- ceiling(num_files / num_parts)
 for (i in 1:num_parts) {chunk_files <- references_files[((i - 1) * chunk_size + 1):min(i * chunk_size, num_files)]
-                        chunk_files <- chunk_files[!is.na(chunk_files)]  # Remove any NA values (in case of fewer files)
+                        chunk_files <- chunk_files[!is.na(chunk_files)]
                         chunk_data <- rbindlist(lapply(chunk_files, fread), fill = TRUE)
                         assign(paste0("references_part_", i), chunk_data, envir = .GlobalEnv)
                         rm(chunk_data)
@@ -503,7 +540,7 @@ references_local_variable <- references_local_variable %>% group_by(journal_id, 
 references_local_variable <- references_local_variable %>% mutate(refs_prop = round(refs_count / refs_total, 2))
 
 
-# CITATIONS
+## CITATIONS
 citations_local_variable <- list.files(path = "~/Desktop/OpenAlex_journals_dataset/citations_local_variable", pattern = "^citations_local_variable_\\d{12}$", full.names = TRUE)
 citations_local_variable <- rbindlist(lapply(citations_local_variable, fread, sep = ","), fill = TRUE)
 
@@ -522,11 +559,17 @@ citations_local_variable <- citations_local_variable %>% group_by(journal_id, jo
 citations_local_variable <- citations_local_variable %>% mutate(cits_prop = round(cits_count / cits_total, 2))
 
 
-# LANGUAGES
+## PUBLICATIONS/JOURNALS?
+
+
+## LANGUAGES
 # ddff_megamerge, buscar la presencia de "ENG" o "English" en la variable anidada language. Traer los datos language de OpenAlex. Guardar como 1-0 en una nueva variable languages_local_variable
 
 
+## DATABASES
 
+
+## TOPONYMS
 
 
 #write.csv(ddff_megamerge, "~/Desktop/OpenAlex_journals_dataset/mega_merge.csv")
