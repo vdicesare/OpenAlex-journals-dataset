@@ -7,6 +7,8 @@ library(readxl)
 library(readr)
 library(stringr)
 library(bit64)
+library(ggplot2)
+library(UpSetR)
 options(scipen = 999)
 
 
@@ -497,7 +499,7 @@ ddff_megamerge <- ddff_megamerge %>% select(OA_ID, other_IDs, OA_source_ID, othe
                                             CWTS_percent_self_citations, CWTS_SNIP, CWTS_SNIP_lower_bound, CWTS_SNIP_upper_bound, CWTS_IPP, CWTS_IPP_lower_bound, CWTS_IPP_upper_bound, SJR_percent_female, SJR_SDG, SJR_overton)
 
 
-### LOCAL VARIABLES COMPUTATION                  ¡¡SEGUIR POR ACÁ!!
+### LOCAL VARIABLES COMPUTATION
 ## REFERENCES
 # read files and split into 20 dataframes for processing
 references_files <- list.files(path = "~/Desktop/OpenAlex_journals_dataset/references_local_variable", pattern = "^references_local_variable_\\d{12}$", full.names = TRUE)
@@ -571,5 +573,51 @@ citations_local_variable <- citations_local_variable %>% mutate(cits_prop = roun
 
 ## TOPONYMS
 
+
+### FIGURES
+## FIGURE 1
+# manually build the vector to plot databases overlap
+figure1 <- c(OpenAlex = 75694, MJL = 22455, JCR = 21988, Scopus = 29221, SJR = 28174, CWTS = 27879, DOAJ = 20955,
+             "OpenAlex&MJL" = 20428, "OpenAlex&JCR" = 20046, "OpenAlex&Scopus" = 25932, "OpenAlex&SJR" = 23997, "OpenAlex&CWTS" = 23795, "OpenAlex&DOAJ" = 16256,
+             "OpenAlex&MJL&JCR" = 19991, "OpenAlex&MJL&Scopus" = 18561, "OpenAlex&MJL&SJR" = 18309, "OpenAlex&MJL&CWTS" = 18158, "OpenAlex&MJL&DOAJ" = 5698,
+             "OpenAlex&JCR&Scopus" = 18249, "OpenAlex&JCR&SJR" = 18087, "OpenAlex&JCR&CWTS" = 17940, "OpenAlex&JCR&DOAJ" = 5472,
+             "OpenAlex&Scopus&SJR" = 23787, "OpenAlex&Scopus&CWTS" = 23465, "OpenAlex&Scopus&DOAJ" = 7400,
+             "OpenAlex&SJR&CWTS" = 23661, "OpenAlex&SJR&DOAJ" = 6724, "OpenAlex&CWTS&DOAJ" = 6694,
+             "OpenAlex&MJL&JCR&Scopus" = 18221, "OpenAlex&MJL&JCR&SJR" = 18041, "OpenAlex&MJL&JCR&CWTS" = 17894, "OpenAlex&MJL&JCR&DOAJ" = 5456, "OpenAlex&MJL&Scopus&SJR" = 18247, "OpenAlex&MJL&Scopus&CWTS" = 18063, "OpenAlex&MJL&Scopus&DOAJ" = 4811, "OpenAlex&MJL&SJR&CWTS" = 18119, "OpenAlex&MJL&SJR&DOAJ" = 4631, "OpenAlex&MJL&CWTS&DOAJ" = 4622,
+             "OpenAlex&JCR&Scopus&SJR" = 18010, "OpenAlex&JCR&Scopus&CWTS" = 17831, "OpenAlex&JCR&Scopus&DOAJ" = 4623, "OpenAlex&JCR&SJR&CWTS" = 17902, "OpenAlex&JCR&SJR&DOAJ" = 4509, "OpenAlex&JCR&CWTS&DOAJ" = 4503,
+             "OpenAlex&Scopus&SJR&CWTS" = 23457, "OpenAlex&Scopus&SJR&DOAJ" = 6692, "OpenAlex&Scopus&CWTS&DOAJ" = 6643,
+             "OpenAlex&SJR&CWTS&DOAJ" = 6673,
+             "OpenAlex&MJL&JCR&Scopus&SJR" = 17982, "OpenAlex&MJL&JCR&Scopus&CWTS" = 17803, "OpenAlex&MJL&JCR&Scopus&DOAJ" = 4616, "OpenAlex&MJL&JCR&SJR&CWTS" = 17856, "OpenAlex&MJL&JCR&SJR&DOAJ" = 4497, "OpenAlex&MJL&JCR&CWTS&DOAJ" = 4491, "OpenAlex&MJL&Scopus&SJR&CWTS" = 18058, "OpenAlex&MJL&Scopus&SJR&DOAJ" = 4617, "OpenAlex&MJL&Scopus&CWTS&DOAJ" = 4595, "OpenAlex&MJL&SJR&CWTS&DOAJ" = 4609,
+             "OpenAlex&JCR&Scopus&SJR&CWTS" = 17826, "OpenAlex&JCR&Scopus&SJR&DOAJ" = 4490, "OpenAlex&JCR&Scopus&CWTS&DOAJ" = 4471, "OpenAlex&JCR&SJR&CWTS&DOAJ" = 4490,
+             "OpenAlex&Scopus&SJR&CWTS&DOAJ" = 6641,
+             "OpenAlex&MJL&JCR&Scopus&SJR&CWTS" = 17798, "OpenAlex&MJL&JCR&Scopus&SJR&DOAJ" = 4483, "OpenAlex&MJL&JCR&Scopus&CWTS&DOAJ" = 4464, "OpenAlex&MJL&JCR&SJR&CWTS&DOAJ" = 4478, "OpenAlex&MJL&Scopus&SJR&CWTS&DOAJ" = 4595,
+             "OpenAlex&JCR&Scopus&SJR&CWTS&DOAJ" = 4471,
+             "OpenAlex&MJL&JCR&Scopus&SJR&CWTS&DOAJ" = 4464)
+
+# plot intersections matrix to represent the overlap of journals between databases
+figure1 <- upset(fromExpression(figure1),
+                 nintersects = 63, 
+                 nsets = 7,
+                 sets = c("OpenAlex", "MJL", "JCR", "Scopus", "SJR", "CWTS", "DOAJ"),
+                 mainbar.y.label = "Intersection size",
+                 main.bar.color = "grey50",
+                 sets.x.label = "Set size",
+                 point.size = 1.5,
+                 matrix.color = "grey50",
+                 line.size = 0.5,
+                 order.by = "freq", 
+                 decreasing = T,
+                 show.numbers = "no",
+                 mb.ratio = c(0.5, 0.5),
+                 queries = list(list(query = intersects, params = list("OpenAlex"), color = "#4981BF", active = TRUE),
+                                list(query = intersects, params = list("MJL"), color = "#4981BF", active = TRUE),
+                                list(query = intersects, params = list("JCR"), color = "#4981BF", active = TRUE),
+                                list(query = intersects, params = list("Scopus"), color = "#4981BF", active = TRUE),
+                                list(query = intersects, params = list("SJR"), color = "#4981BF", active = TRUE),
+                                list(query = intersects, params = list("CWTS"), color = "#4981BF", active = TRUE),
+                                list(query = intersects, params = list("DOAJ"), color = "#4981BF", active = TRUE)))
+png(filename = "~/Desktop/OpenAlex_journals_dataset/figure1.png", width = 6.27, height = 3.14, units = "in", res = 300)
+print(figure1)
+dev.off()
 
 #write.csv(ddff_megamerge, "~/Desktop/OpenAlex_journals_dataset/mega_merge.csv")
