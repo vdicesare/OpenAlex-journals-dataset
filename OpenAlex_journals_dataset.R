@@ -8,6 +8,7 @@ library(readr)
 library(stringr)
 library(bit64)
 library(ggplot2)
+library(eulerr)
 library(UpSetR)
 library(cld3)
 options(scipen = 999)
@@ -711,6 +712,55 @@ dev.off()
 
 
 ## FIGURE 2
+# isolate the journals that belong to each group: locally informed, situated and relevant research considering the 3ºQ of their variables distributions respectively: refs_prop (0.43), tops_prop (0.14), cits_prop (1) + pubs_prop (0.94)
+locally_informed_res <- ddff_megamerge %>% distinct(OA_source_ID, .keep_all = TRUE) %>%
+                                           filter(refs_prop >= 0.43) %>%
+                                           select(OA_source_ID, other_IDs, refs_prop, refs_country)
+locally_informed_res <- locally_informed_res %>% unnest(other_IDs)
+
+locally_situated_res <- ddff_megamerge %>% distinct(OA_source_ID, .keep_all = TRUE) %>%
+                                           filter(tops_prop >= 0.14) %>%
+                                           select(OA_source_ID, other_IDs, tops_prop, pubs_country)
+locally_situated_res <- locally_situated_res %>% unnest(other_IDs)
+
+locally_relevant_res <- ddff_megamerge %>% distinct(OA_source_ID, .keep_all = TRUE) %>%
+                                           filter(cits_prop == 1 | pubs_prop >= 0.94) %>%
+                                           select(OA_source_ID, other_IDs, cits_prop, cits_country, pubs_prop, pubs_country)
+locally_relevant_res <- locally_relevant_res %>% unnest(other_IDs)
+
+# produce intersections diagram
+informed <- locally_informed_res %>% pull(OA_source_ID) %>% unique()
+situated <- locally_situated_res %>% pull(OA_source_ID) %>% unique()
+relevant <- locally_relevant_res %>% pull(OA_source_ID) %>% unique()
+
+informed_situated <- intersect(informed, situated)
+informed_relevant <- intersect(informed, relevant)
+situated_relevant <- intersect(situated, relevant)
+informed_situated_relevant <- Reduce(intersect, list(informed, situated, relevant))
+
+# create an Euler diagram with input data
+venn_data <- c("Locally informed research" = length(informed),
+               "Locally situated research" = length(situated),
+               "Locally relevant research" = length(relevant),
+               "Locally informed research&Locally situated research" = length(informed_situated),
+               "Locally informed research&Locally relevant research" = length(informed_relevant),
+               "Locally situated research&Locally relevant research" = length(situated_relevant),
+               "Locally informed research&Locally situated research&Locally relevant research" = length(informed_situated_relevant))
+fit <- euler(venn_data)
+
+# plot the diagram
+figure2 <- plot(fit, 
+                fills = c("#F4FAFE", "#BED7F2", "#4981BF"),
+                labels = c("Locally Informed\nResearch", "Locally Situated\nResearch", "Locally Relevant\nResearch"),
+                edges = FALSE, 
+                quantities = list(font = ifelse(venn_data == length(informed_situated_relevant), 2, 1)))
+ggsave("~/Desktop/OpenAlex_journals_dataset/figure2.png", plot = figure2, width = 6.5, height = 6, dpi = 300)
+
+
+## FIGURE 3
+
+
+## FIGURE 4
 
 
 #write.csv(ddff_megamerge, "~/Desktop/OpenAlex_journals_dataset/mega_merge.csv")
