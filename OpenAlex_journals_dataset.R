@@ -9,6 +9,7 @@ library(stringr)
 library(bit64)
 library(ggplot2)
 library(UpSetR)
+library(cld3)
 options(scipen = 999)
 
 
@@ -502,7 +503,7 @@ ddff_megamerge <- ddff_megamerge %>% select(OA_ID, other_IDs, OA_source_ID, othe
 ### LOCAL VARIABLES COMPUTATION
 ## REFERENCES
 # read files and split into 20 dataframes for processing
-references_files <- list.files(path = "~/Desktop/OpenAlex_journals_dataset/references_local_variable", pattern = "^references_local_variable_\\d{12}$", full.names = TRUE)
+references_files <- list.files(path = "~/Desktop/OpenAlex_journals_dataset/references_local_variable", pattern = "^local_research_OA2410_references_local_variable_\\d{12}$", full.names = TRUE)
 num_parts <- 20  
 num_files <- length(references_files)
 chunk_size <- ceiling(num_files / num_parts)
@@ -524,44 +525,114 @@ references_part_1 <- references_part_1 %>% group_by(journal_id, journal_name) %>
                                            ungroup()
 
 # merge all parts together without loosing rows
-references_local_variable <- rbind(references_part_1, references_part_2, references_part_3, references_part_4, references_part_5, references_part_6,
-                                   references_part_7, references_part_8, references_part_9, references_part_10, references_part_11, references_part_12,
-                                   references_part_13, references_part_14, references_part_15, references_part_16, references_part_17, references_part_18,
-                                   references_part_19, references_part_20, fill = TRUE)
+local_variable_refs <- rbind(references_part_1, references_part_2, references_part_3, references_part_4, references_part_5, references_part_6,
+                             references_part_7, references_part_8, references_part_9, references_part_10, references_part_11, references_part_12,
+                             references_part_13, references_part_14, references_part_15, references_part_16, references_part_17, references_part_18,
+                             references_part_19, references_part_20, fill = TRUE)
 
 # compute variables refs_count, refs_total and refs_prop per unique combination of journal and its most referenced country
-references_local_variable <- references_local_variable %>% group_by(journal_id, journal_name, country) %>%
-                                                           summarise(refs_count = sum(refs_count, na.rm = TRUE), .groups = "drop")
-references_local_variable <- references_local_variable %>% filter(!(journal_id == 1 & journal_name == "TRUE" & country == "TRUE" & refs_count == 1))
-references_local_variable <- references_local_variable %>% group_by(journal_id, journal_name) %>%
-                                                           mutate(refs_total = sum(refs_count, na.rm = TRUE)) %>%
-                                                           ungroup()
-references_local_variable <- references_local_variable %>% group_by(journal_id, journal_name) %>%
-                                                           filter(refs_count == max(refs_count)) %>%
-                                                           ungroup()
-references_local_variable <- references_local_variable %>% mutate(refs_prop = round(refs_count / refs_total, 2))
+local_variable_refs <- local_variable_refs %>% group_by(journal_id, journal_name, country) %>%
+                                                        summarise(refs_count = sum(refs_count, na.rm = TRUE), .groups = "drop")
+local_variable_refs <- local_variable_refs %>% filter(!(journal_id == 1 & journal_name == "TRUE" & country == "TRUE" & refs_count == 1))
+local_variable_refs <- local_variable_refs %>% group_by(journal_id, journal_name) %>%
+                                                        mutate(refs_total = sum(refs_count, na.rm = TRUE)) %>%
+                                                        ungroup()
+local_variable_refs <- local_variable_refs %>% group_by(journal_id, journal_name) %>%
+                                                        filter(refs_count == max(refs_count)) %>%
+                                                        ungroup()
+local_variable_refs <- local_variable_refs %>% mutate(refs_prop = round(refs_count / refs_total, 2))
 
 
 ## CITATIONS
-citations_local_variable <- list.files(path = "~/Desktop/OpenAlex_journals_dataset/citations_local_variable", pattern = "^citations_local_variable_\\d{12}$", full.names = TRUE)
-citations_local_variable <- rbindlist(lapply(citations_local_variable, fread, sep = ","), fill = TRUE)
+local_variable_cits <- list.files(path = "~/Desktop/OpenAlex_journals_dataset/citations_local_variable", pattern = "^local_research_OA2410_citations_local_variable_\\d{12}$", full.names = TRUE)
+local_variable_cits <- rbindlist(lapply(local_variable_cits, fread, sep = ","), fill = TRUE)
 
 # compute variables cits_count, cits_total and cits_prop per unique combination of journal and its most citing country
-citations_local_variable <- citations_local_variable %>% group_by(journal_id, journal_name, country) %>%
-                                                         mutate(cits_count = n()) %>%
-                                                         ungroup()
-citations_local_variable <- within(citations_local_variable, rm(article_id, citing_work_id))
-citations_local_variable <- citations_local_variable %>% distinct()
-citations_local_variable <- citations_local_variable %>% group_by(journal_id, journal_name) %>%
-                                                         mutate(cits_total = sum(cits_count, na.rm = TRUE)) %>%
-                                                         ungroup()
-citations_local_variable <- citations_local_variable %>% group_by(journal_id, journal_name) %>%
-                                                         filter(cits_count == max(cits_count)) %>%
-                                                         ungroup()
-citations_local_variable <- citations_local_variable %>% mutate(cits_prop = round(cits_count / cits_total, 2))
+local_variable_cits <- local_variable_cits %>% group_by(journal_id, journal_name, country) %>%
+                                                        mutate(cits_count = n()) %>%
+                                                        ungroup()
+local_variable_cits <- within(local_variable_cits, rm(article_id, citing_work_id))
+local_variable_cits <- local_variable_cits %>% distinct()
+local_variable_cits <- local_variable_cits %>% group_by(journal_id, journal_name) %>%
+                                                        mutate(cits_total = sum(cits_count, na.rm = TRUE)) %>%
+                                                        ungroup()
+local_variable_cits <- local_variable_cits %>% group_by(journal_id, journal_name) %>%
+                                                        filter(cits_count == max(cits_count)) %>%
+                                                        ungroup()
+local_variable_cits <- local_variable_cits %>% mutate(cits_prop = round(cits_count / cits_total, 2))
 
 
-## PUBLICATIONS/JOURNALS?
+## PUBLICATIONS
+local_variable_pubs <- list.files(path = "~/Desktop/OpenAlex_journals_dataset/publications_local_variable", pattern = "^local_research_OA2410_publications_local_variable_\\d{12}$", full.names = TRUE)
+local_variable_pubs <- rbindlist(lapply(local_variable_pubs, fread, sep = ","), fill = TRUE)
+
+# compute variables pubs_count, pubs_total and pubs_prop per unique combination of journal and its most publishing country
+local_variable_pubs <- local_variable_pubs %>% group_by(journal_id, journal_name, country) %>%
+                                               mutate(pubs_count = n()) %>%
+                                               ungroup()
+local_variable_pubs <- within(local_variable_pubs, rm(article_id))
+local_variable_pubs <- local_variable_pubs %>% distinct()
+local_variable_pubs <- local_variable_pubs %>% group_by(journal_id, journal_name) %>%
+                                               mutate(pubs_total = sum(pubs_count, na.rm = TRUE)) %>%
+                                               ungroup()
+local_variable_pubs <- local_variable_pubs %>% group_by(journal_id, journal_name) %>%
+                                               filter(pubs_count == max(pubs_count)) %>%
+                                               ungroup()
+local_variable_pubs <- local_variable_pubs %>% mutate(pubs_prop = round(pubs_count / pubs_total, 2))
+
+
+## TOPONYMS
+local_variable_tops <- list.files(path = "~/Desktop/OpenAlex_journals_dataset/toponyms_local_variable", pattern = "^local_research_OA2410_toponyms_local_variable_\\d{12}$", full.names = TRUE)
+local_variable_tops <- rbindlist(lapply(local_variable_tops, fread, sep = ","), fill = TRUE)
+
+local_variable_tops$language <- cld3::detect_language(local_variable_tops$title)
+# 95% of languages in the titles:
+## EN = english (3472125)
+## ID = indonesian (144362)
+## ES = spanish (107388)
+## PT = portuguese (105655)
+## DE = german (62374)
+## FR = french (60272)
+## AR = arabic (36210)
+## UK = ukranian (31701)
+## TR = turkish (30449)
+## RU = russian (27421)
+
+# obtain toponyms from the map.world dataframe in local.research.data.Rdata
+name_en <- map.world$NAME_EN
+writeLines(name_en, "~/Desktop/OpenAlex_journals_dataset/name_en.txt")
+name_id <- map.world$NAME_ID
+writeLines(name_id, "~/Desktop/OpenAlex_journals_dataset/name_id.txt")
+name_es <- map.world$NAME_ES
+writeLines(name_es, "~/Desktop/OpenAlex_journals_dataset/name_es.txt")
+name_pt <- map.world$NAME_PT
+writeLines(name_pt, "~/Desktop/OpenAlex_journals_dataset/name_pt.txt")
+name_de <- map.world$NAME_DE
+writeLines(name_de, "~/Desktop/OpenAlex_journals_dataset/name_de.txt")
+name_fr <- map.world$NAME_FR
+writeLines(name_fr, "~/Desktop/OpenAlex_journals_dataset/name_fr.txt")
+name_ar <- map.world$NAME_AR
+writeLines(name_ar, "~/Desktop/OpenAlex_journals_dataset/name_ar.txt")
+name_uk <- map.world$NAME_UK
+writeLines(name_uk, "~/Desktop/OpenAlex_journals_dataset/name_uk.txt")
+name_tr <- map.world$NAME_TR
+writeLines(name_tr, "~/Desktop/OpenAlex_journals_dataset/name_tr.txt")
+name_ru <- map.world$NAME_RU
+writeLines(name_ru, "~/Desktop/OpenAlex_journals_dataset/name_ru.txt")
+
+# upload the already detected toponyms from BigQuery to compute tops_count, tops_total and tops_prop variables
+local_variable_tops_2 <- list.files(path = "~/Desktop/OpenAlex_journals_dataset/toponyms_local_variable_2", pattern = "^local_research_OA2410_toponyms_local_variable_\\d{12}$", full.names = TRUE)
+local_variable_tops_2 <- rbindlist(lapply(local_variable_tops_2, fread, sep = ","), fill = TRUE)
+
+local_variable_tops_2 <- local_variable_tops_2 %>% group_by(journal_id, journal_name) %>%
+                                                   mutate(tops_count = n_distinct(article_id[tops_detect == 1])) %>%
+                                                   ungroup()
+local_variable_tops_2 <- local_variable_tops_2 %>% group_by(journal_id, journal_name) %>%
+                                                   mutate(tops_total = n_distinct(article_id)) %>%
+                                                   ungroup()
+local_variable_tops_2 <- local_variable_tops_2 %>% mutate(tops_prop = round(tops_count / tops_total, 2))
+local_variable_tops_2 <- within(local_variable_tops_2, rm(article_id, title, tops_detect))
+local_variable_tops_2 <- local_variable_tops_2 %>% distinct()
 
 
 ## LANGUAGES
@@ -571,7 +642,25 @@ citations_local_variable <- citations_local_variable %>% mutate(cits_prop = roun
 ## DATABASES
 
 
-## TOPONYMS
+# incorporate the local variables to ddff_megamerge
+local_variable_refs$journal_id <- as.character(local_variable_refs$journal_id)
+local_variable_cits$journal_id <- as.character(local_variable_cits$journal_id)
+local_variable_pubs$journal_id <- as.character(local_variable_pubs$journal_id)
+local_variable_tops_2$journal_id <- as.character(local_variable_tops_2$journal_id)
+ddff_megamerge$OA_source_ID <- as.character(ddff_megamerge$OA_source_ID)
+
+ddff_megamerge <- ddff_megamerge %>% left_join(local_variable_refs %>%
+                                               select(journal_id, refs_prop, refs_country = country),
+                                               by = c("OA_source_ID" = "journal_id")) %>%
+                                     left_join(local_variable_cits %>%
+                                               select(journal_id, cits_prop, cits_country = country),
+                                               by = c("OA_source_ID" = "journal_id")) %>%
+                                     left_join(local_variable_pubs %>%
+                                               select(journal_id, pubs_prop, pubs_country = country),
+                                               by = c("OA_source_ID" = "journal_id")) %>%
+                                     left_join(local_variable_tops_2 %>%
+                                               select(journal_id, tops_prop),
+                                               by = c("OA_source_ID" = "journal_id"))
 
 
 ### FIGURES
@@ -619,5 +708,9 @@ figure1 <- upset(fromExpression(figure1),
 png(filename = "~/Desktop/OpenAlex_journals_dataset/figure1.png", width = 6.27, height = 3.14, units = "in", res = 300)
 print(figure1)
 dev.off()
+
+
+## FIGURE 2
+
 
 #write.csv(ddff_megamerge, "~/Desktop/OpenAlex_journals_dataset/mega_merge.csv")
