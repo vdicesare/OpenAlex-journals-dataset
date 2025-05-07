@@ -667,45 +667,41 @@ ddff_megamerge <- ddff_megamerge %>% left_join(local_variable_refs %>%
 ### FIGURES
 ## FIGURE 1
 # manually build the vector to plot databases overlap
-figure1 <- c(OpenAlex = 75694, MJL = 22455, JCR = 21988, Scopus = 29221, SJR = 28174, CWTS = 27879, DOAJ = 20955,
-             "OpenAlex&MJL" = 20428, "OpenAlex&JCR" = 20046, "OpenAlex&Scopus" = 25932, "OpenAlex&SJR" = 23997, "OpenAlex&CWTS" = 23795, "OpenAlex&DOAJ" = 16256,
-             "OpenAlex&MJL&JCR" = 19991, "OpenAlex&MJL&Scopus" = 18561, "OpenAlex&MJL&SJR" = 18309, "OpenAlex&MJL&CWTS" = 18158, "OpenAlex&MJL&DOAJ" = 5698,
-             "OpenAlex&JCR&Scopus" = 18249, "OpenAlex&JCR&SJR" = 18087, "OpenAlex&JCR&CWTS" = 17940, "OpenAlex&JCR&DOAJ" = 5472,
-             "OpenAlex&Scopus&SJR" = 23787, "OpenAlex&Scopus&CWTS" = 23465, "OpenAlex&Scopus&DOAJ" = 7400,
-             "OpenAlex&SJR&CWTS" = 23661, "OpenAlex&SJR&DOAJ" = 6724, "OpenAlex&CWTS&DOAJ" = 6694,
-             "OpenAlex&MJL&JCR&Scopus" = 18221, "OpenAlex&MJL&JCR&SJR" = 18041, "OpenAlex&MJL&JCR&CWTS" = 17894, "OpenAlex&MJL&JCR&DOAJ" = 5456, "OpenAlex&MJL&Scopus&SJR" = 18247, "OpenAlex&MJL&Scopus&CWTS" = 18063, "OpenAlex&MJL&Scopus&DOAJ" = 4811, "OpenAlex&MJL&SJR&CWTS" = 18119, "OpenAlex&MJL&SJR&DOAJ" = 4631, "OpenAlex&MJL&CWTS&DOAJ" = 4622,
-             "OpenAlex&JCR&Scopus&SJR" = 18010, "OpenAlex&JCR&Scopus&CWTS" = 17831, "OpenAlex&JCR&Scopus&DOAJ" = 4623, "OpenAlex&JCR&SJR&CWTS" = 17902, "OpenAlex&JCR&SJR&DOAJ" = 4509, "OpenAlex&JCR&CWTS&DOAJ" = 4503,
-             "OpenAlex&Scopus&SJR&CWTS" = 23457, "OpenAlex&Scopus&SJR&DOAJ" = 6692, "OpenAlex&Scopus&CWTS&DOAJ" = 6643,
-             "OpenAlex&SJR&CWTS&DOAJ" = 6673,
-             "OpenAlex&MJL&JCR&Scopus&SJR" = 17982, "OpenAlex&MJL&JCR&Scopus&CWTS" = 17803, "OpenAlex&MJL&JCR&Scopus&DOAJ" = 4616, "OpenAlex&MJL&JCR&SJR&CWTS" = 17856, "OpenAlex&MJL&JCR&SJR&DOAJ" = 4497, "OpenAlex&MJL&JCR&CWTS&DOAJ" = 4491, "OpenAlex&MJL&Scopus&SJR&CWTS" = 18058, "OpenAlex&MJL&Scopus&SJR&DOAJ" = 4617, "OpenAlex&MJL&Scopus&CWTS&DOAJ" = 4595, "OpenAlex&MJL&SJR&CWTS&DOAJ" = 4609,
-             "OpenAlex&JCR&Scopus&SJR&CWTS" = 17826, "OpenAlex&JCR&Scopus&SJR&DOAJ" = 4490, "OpenAlex&JCR&Scopus&CWTS&DOAJ" = 4471, "OpenAlex&JCR&SJR&CWTS&DOAJ" = 4490,
-             "OpenAlex&Scopus&SJR&CWTS&DOAJ" = 6641,
-             "OpenAlex&MJL&JCR&Scopus&SJR&CWTS" = 17798, "OpenAlex&MJL&JCR&Scopus&SJR&DOAJ" = 4483, "OpenAlex&MJL&JCR&Scopus&CWTS&DOAJ" = 4464, "OpenAlex&MJL&JCR&SJR&CWTS&DOAJ" = 4478, "OpenAlex&MJL&Scopus&SJR&CWTS&DOAJ" = 4595,
-             "OpenAlex&JCR&Scopus&SJR&CWTS&DOAJ" = 4471,
-             "OpenAlex&MJL&JCR&Scopus&SJR&CWTS&DOAJ" = 4464)
+figure1 <- c(OpenAlex = 40619, MJL = 0, JCR = 0, Scopus = 0, SJR = 0, CWTS = 0, DOAJ = 0,
+             "OpenAlex&MJL" = 46, "OpenAlex&JCR" = 5, "OpenAlex&Scopus" = 1296, "OpenAlex&SJR" = 5, "OpenAlex&CWTS" = 86, "OpenAlex&DOAJ" = 7941,
+             "OpenAlex&MJL&JCR" = 865, "OpenAlex&MJL&Scopus" = 14, "OpenAlex&MJL&SJR" = 0, "OpenAlex&MJL&CWTS" = 1, "OpenAlex&MJL&DOAJ" = 47,
+             "OpenAlex&JCR&Scopus" = 0, "OpenAlex&JCR&SJR" = 0, "OpenAlex&JCR&CWTS" = 0, "OpenAlex&JCR&DOAJ" = 4,
+             "OpenAlex&Scopus&SJR" = 110, "OpenAlex&Scopus&CWTS" = 1, "OpenAlex&Scopus&DOAJ" = 511,
+             "OpenAlex&SJR&CWTS" = 112, "OpenAlex&SJR&DOAJ" = 0, "OpenAlex&CWTS&DOAJ" = 6,
+             "OpenAlex&MJL&JCR&Scopus" = 101, "OpenAlex&MJL&JCR&SJR" = 1, "OpenAlex&MJL&JCR&CWTS" = 20, "OpenAlex&MJL&JCR&DOAJ" = 813, "OpenAlex&MJL&Scopus&SJR" = 2, "OpenAlex&MJL&Scopus&CWTS" = 0, "OpenAlex&MJL&Scopus&DOAJ" = 61, "OpenAlex&MJL&SJR&CWTS" = 3, "OpenAlex&MJL&SJR&DOAJ" = 0, "OpenAlex&MJL&CWTS&DOAJ" = 0,
+             "OpenAlex&JCR&Scopus&SJR" = 0, "OpenAlex&JCR&Scopus&CWTS" = 0, "OpenAlex&JCR&Scopus&DOAJ" = 0, "OpenAlex&JCR&SJR&CWTS" = 13, "OpenAlex&JCR&SJR&DOAJ" = 0, "OpenAlex&JCR&CWTS&DOAJ" = 0,
+             "OpenAlex&Scopus&SJR&CWTS" = 3317, "OpenAlex&Scopus&SJR&DOAJ" = 29, "OpenAlex&Scopus&CWTS&DOAJ" = 2,
+             "OpenAlex&SJR&CWTS&DOAJ" = 13,
+             "OpenAlex&MJL&JCR&Scopus&SJR" = 165, "OpenAlex&MJL&JCR&Scopus&CWTS" = 5, "OpenAlex&MJL&JCR&Scopus&DOAJ" = 132, "OpenAlex&MJL&JCR&SJR&CWTS" = 44, "OpenAlex&MJL&JCR&SJR&DOAJ" = 0, "OpenAlex&MJL&JCR&CWTS&DOAJ" = 13, "OpenAlex&MJL&Scopus&SJR&CWTS" = 129, "OpenAlex&MJL&Scopus&SJR&DOAJ" = 3, "OpenAlex&MJL&Scopus&CWTS&DOAJ" = 0, "OpenAlex&MJL&SJR&CWTS&DOAJ" = 0,
+             "OpenAlex&JCR&Scopus&SJR&CWTS" = 21, "OpenAlex&JCR&Scopus&SJR&DOAJ" = 0, "OpenAlex&JCR&Scopus&CWTS&DOAJ" = 0, "OpenAlex&JCR&SJR&CWTS&DOAJ" = 5,
+             "OpenAlex&Scopus&SJR&CWTS&DOAJ" = 2038,
+             "OpenAlex&MJL&JCR&Scopus&SJR&CWTS" = 13329, "OpenAlex&MJL&JCR&Scopus&SJR&DOAJ" = 19, "OpenAlex&MJL&JCR&Scopus&CWTS&DOAJ" = 0, "OpenAlex&MJL&JCR&SJR&CWTS&DOAJ" = 14, "OpenAlex&MJL&Scopus&SJR&CWTS&DOAJ" = 131,
+             "OpenAlex&JCR&Scopus&SJR&CWTS&DOAJ" = 7,
+             "OpenAlex&MJL&JCR&Scopus&SJR&CWTS&DOAJ" = 4462)
 
-# plot intersections matrix to represent the overlap of journals between databases
+# keep only cases with more than one set and values > 0
+figure1 <- figure1[grepl("&", names(figure1)) & figure1 > 0]
+
+# plot
 figure1 <- upset(fromExpression(figure1),
-                 nintersects = 63, 
-                 nsets = 7,
-                 sets = c("OpenAlex", "MJL", "JCR", "Scopus", "SJR", "CWTS", "DOAJ"),
-                 mainbar.y.label = "Intersection size",
-                 main.bar.color = "grey50",
-                 sets.x.label = "Set size",
-                 point.size = 1.5,
-                 matrix.color = "grey50",
-                 line.size = 0.5,
-                 order.by = "freq", 
-                 decreasing = T,
-                 show.numbers = "no",
-                 mb.ratio = c(0.5, 0.5),
-                 queries = list(list(query = intersects, params = list("OpenAlex"), color = "#4981BF", active = TRUE),
-                                list(query = intersects, params = list("MJL"), color = "#4981BF", active = TRUE),
-                                list(query = intersects, params = list("JCR"), color = "#4981BF", active = TRUE),
-                                list(query = intersects, params = list("Scopus"), color = "#4981BF", active = TRUE),
-                                list(query = intersects, params = list("SJR"), color = "#4981BF", active = TRUE),
-                                list(query = intersects, params = list("CWTS"), color = "#4981BF", active = TRUE),
-                                list(query = intersects, params = list("DOAJ"), color = "#4981BF", active = TRUE)))
+                      nintersects = NA,
+                      nsets = 7,
+                      sets = c("OpenAlex", "MJL", "JCR", "Scopus", "SJR", "CWTS", "DOAJ"),
+                      mainbar.y.label = "Intersection size",
+                      main.bar.color = "#F8766D",
+                      sets.x.label = "Set size",
+                      point.size = 1.5,
+                      matrix.color = "grey50",
+                      line.size = 0.5,
+                      order.by = "freq", 
+                      decreasing = TRUE,
+                      show.numbers = "no",
+                      mb.ratio = c(0.5, 0.5))
 png(filename = "~/Desktop/OpenAlex_journals_dataset/figure1.png", width = 6.27, height = 3.14, units = "in", res = 300)
 print(figure1)
 dev.off()
@@ -750,7 +746,7 @@ fit <- euler(venn_data)
 
 # plot the diagram
 figure2 <- plot(fit, 
-                fills = c("#F4FAFE", "#BED7F2", "#4981BF"),
+                fills = adjustcolor(c("#7CAE00", "#00BA38", "#00BFC4"), alpha.f = 0.6),
                 labels = c("Locally Informed\nResearch", "Locally Situated\nResearch", "Locally Relevant\nResearch"),
                 edges = FALSE, 
                 quantities = list(font = ifelse(venn_data == length(informed_situated_relevant), 2, 1)))
@@ -758,9 +754,46 @@ ggsave("~/Desktop/OpenAlex_journals_dataset/figure2.png", plot = figure2, width 
 
 
 ## FIGURE 3
+# include a categoric label in each dataframe
+locally_informed_res <- locally_informed_res %>% mutate(group = "Locally Informed Research")
+locally_situated_res <- locally_situated_res %>% mutate(group = "Locally Situated Research")
+locally_relevant_res <- locally_relevant_res %>% mutate(group = "Locally Relevant Research")
+all_journals <- ddff_megamerge %>% select(OA_source_ID, other_IDs) %>%
+                                   unnest(other_IDs) %>%
+                                   mutate(group = "All journals")
+
+# bind all data together
+figure3 <- bind_rows(locally_informed_res %>% select(group, OA_source_ID, MJL_ID, JCR_ID, SCOP_ID, SJR_ID, CWTS_ID, DOAJ_ID),
+                     locally_situated_res %>% select(group, OA_source_ID, MJL_ID, JCR_ID, SCOP_ID, SJR_ID, CWTS_ID, DOAJ_ID),
+                     locally_relevant_res %>% select(group, OA_source_ID, MJL_ID, JCR_ID, SCOP_ID, SJR_ID, CWTS_ID, DOAJ_ID),
+                     all_journals %>% select(group, OA_source_ID, MJL_ID, JCR_ID, SCOP_ID, SJR_ID, CWTS_ID, DOAJ_ID))
+
+# convert to long format
+figure3 <- figure3 %>% pivot_longer(cols = c(OA_source_ID, MJL_ID, JCR_ID, SCOP_ID, SJR_ID, CWTS_ID, DOAJ_ID),
+                                    names_to = "source",
+                                    values_to = "id") %>%
+                                    mutate(present = !is.na(id))
+figure3 <- figure3 %>% filter(present == TRUE)
+figure3 <- figure3 %>% distinct()
+figure3 <- figure3 %>% count(group, source, name = "count") %>%
+                       group_by(group)
+figure3$source <- factor(figure3$source, levels = c("OA_source_ID", "MJL_ID", "JCR_ID", "SCOP_ID", "SJR_ID", "CWTS_ID", "DOAJ_ID"))
+
+ggplot(figure3, aes(x = source, y = count, fill = source)) +
+  geom_col(position = position_dodge(width = 0.8), width = 0.7) +
+  facet_wrap(~ group) +
+  labs(x = "Data Sources", y = "Number of Journals") +
+  coord_flip() +
+  scale_x_discrete(labels = c("OA_source_ID" = "OpenAlex", "MJL_ID" = "MJL", "JCR_ID" = "JCR", "SCOP_ID" = "Scopus", "SJR_ID" = "SJR", "CWTS_ID" = "CWTS", "DOAJ_ID" = "DOAJ")) +
+  theme_minimal() +
+  theme(legend.position = "none")
+ggsave("~/Desktop/OpenAlex_journals_dataset/figure3.png", width = 6.27, height = 3.14, dpi = 300)
 
 
-## FIGURE 4
+## FIGURE 4 distribución de proporciones por dimensiones y para todas las revistas?
+
+
+## FIGURE 5 mapas como los de Elvira?
 
 
 #write.csv(ddff_megamerge, "~/Desktop/OpenAlex_journals_dataset/mega_merge.csv")
