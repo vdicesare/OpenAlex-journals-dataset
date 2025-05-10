@@ -8,6 +8,10 @@ library(readr)
 library(stringr)
 library(bit64)
 library(ggplot2)
+library(ggridges)
+library(sf)
+library(rnaturalearth)
+library(rnaturalearthdata)
 library(eulerr)
 library(UpSetR)
 library(cld3)
@@ -790,10 +794,171 @@ ggplot(figure3, aes(x = source, y = count, fill = source)) +
 ggsave("~/Desktop/OpenAlex_journals_dataset/figure3.png", width = 6.27, height = 3.14, dpi = 300)
 
 
-## FIGURE 4 distribución de proporciones por dimensiones y para todas las revistas?
+## FIGURE 4
+#locally_informed_res <- locally_informed_res %>% mutate(proportion = "refs")
+#locally_situated_res <- locally_situated_res %>% mutate(proportion = "tops")
+#locally_relevant_res <- locally_relevant_res %>% mutate(proportion = "cits/pubs")
+#all_journals <- ddff_megamerge %>% select(OA_source_ID, other_IDs, refs_prop, cits_prop, pubs_prop, tops_prop) %>%
+#                                   unnest(other_IDs) %>%
+#                                   mutate(group = "All journals")
+
+# convert to long format and clean each dataframe before binding
+#locally_informed_res <- locally_informed_res %>% pivot_longer(cols = c(OA_source_ID, MJL_ID, JCR_ID, SCOP_ID, SJR_ID, CWTS_ID, DOAJ_ID), names_to = "source", values_to = "id") %>% mutate(present = !is.na(id))
+#locally_informed_res <- locally_informed_res %>% filter(present == TRUE)
+#locally_informed_res <- locally_informed_res %>% select(source, id, proportion, value = refs_prop, group)
+#locally_informed_res <- locally_informed_res %>% distinct()
+
+#locally_situated_res <- locally_situated_res %>% pivot_longer(cols = c(OA_source_ID, MJL_ID, JCR_ID, SCOP_ID, SJR_ID, CWTS_ID, DOAJ_ID), names_to = "source", values_to = "id") %>% mutate(present = !is.na(id))
+#locally_situated_res <- locally_situated_res %>% filter(present == TRUE)
+#locally_situated_res <- locally_situated_res %>% select(source, id, proportion, value = tops_prop, group)
+#locally_situated_res <- locally_situated_res %>% distinct()
+
+#locally_relevant_res <- locally_relevant_res %>% pivot_longer(cols = c(OA_source_ID, MJL_ID, JCR_ID, SCOP_ID, SJR_ID, CWTS_ID, DOAJ_ID), names_to = "source", values_to = "id") %>% mutate(present = !is.na(id))
+#locally_relevant_res <- locally_relevant_res %>% filter(present == TRUE)
+#locally_relevant_res <- locally_relevant_res %>% select(source, id, proportion, cits_prop, pubs_prop, group)
+#locally_relevant_res <- locally_relevant_res %>% pivot_longer(cols = c(cits_prop, pubs_prop), names_to = "type", values_to = "value")
+#locally_relevant_res <- locally_relevant_res %>% filter((type == "pubs_prop" & value >= 0.94) | (type == "cits_prop" & value == 1))
+#locally_relevant_res <- locally_relevant_res %>% distinct()
+
+#all_journals <- all_journals %>% pivot_longer(cols = c(OA_source_ID, MJL_ID, JCR_ID, SCOP_ID, SJR_ID, CWTS_ID, DOAJ_ID), names_to = "source", values_to = "id") %>%
+#                                 mutate(present = !is.na(id)) %>%
+#                                 pivot_longer(cols = c(refs_prop, tops_prop, cits_prop, pubs_prop), names_to = "proportion", values_to = "value")
+#all_journals <- all_journals %>% filter(present == TRUE)
+#all_journals <- all_journals %>% mutate(proportion = case_when(proportion == "cits_prop" ~ "cits/pubs",
+#                                                               proportion == "pubs_prop" ~ "cits/pubs",
+#                                                               proportion == "refs_prop" ~ "refs",
+#                                                               proportion == "tops_prop" ~ "tops",
+#                                                               TRUE ~ proportion))
+#all_journals <- all_journals %>% distinct()
+#all_journals$source <- factor(all_journals$source, levels = c("OA_source_ID", "MJL_ID", "JCR_ID", "SCOP_ID", "SJR_ID", "CWTS_ID", "DOAJ_ID"))
+#all_journals$proportion <- factor(all_journals$proportion, levels = c("refs", "cits/pubs", "tops"))
+
+# bind all data together
+#figure4 <- bind_rows(locally_informed_res %>% select(source, id, proportion, value, group),
+#                     locally_situated_res %>% select(source, id, proportion, value, group),
+#                     locally_relevant_res %>% select(source, id, proportion, value, group),
+#                     all_journals %>% select(source, id, proportion, value, group))
+#figure4$source <- factor(figure4$source, levels = c("OA_source_ID", "MJL_ID", "JCR_ID", "SCOP_ID", "SJR_ID", "CWTS_ID", "DOAJ_ID"))
+
+#ggplot(figure4, aes(x = value, y = source, fill = source, color = source)) +
+#  geom_density_ridges(alpha = 0.7, scale = 1) +
+#  facet_wrap(~ group) +
+#  labs(x = "Proportion", y = "Data Sources") +
+#  scale_y_discrete(labels = c("OA_source_ID" = "OpenAlex", "MJL_ID" = "MJL", "JCR_ID" = "JCR", "SCOP_ID" = "Scopus", "SJR_ID" = "SJR", "CWTS_ID" = "CWTS", "DOAJ_ID" = "DOAJ")) +
+#  theme_minimal() +
+#  theme(legend.position = "none")
+#ggsave("~/Desktop/OpenAlex_journals_dataset/figure4.png", width = 6.27, height = 3.14, dpi = 300)
+
+#ggplot(all_journals, aes(x = value, y = source, fill = source, color = source)) +
+#  geom_density_ridges(alpha = 0.7, scale = 1) +
+#  facet_wrap(~ proportion, labeller = as_labeller(c("refs" = "Locally Informed Research",
+#                                                    "cits/pubs" = "Locally Relevant Research",
+#                                                    "tops" = "Locally Situated Research"))) +
+#  labs(x = "Proportions", y = "Data Sources") +
+#  scale_y_discrete(labels = c("OA_source_ID" = "OpenAlex", "MJL_ID" = "MJL", "JCR_ID" = "JCR", "SCOP_ID" = "Scopus", "SJR_ID" = "SJR", "CWTS_ID" = "CWTS", "DOAJ_ID" = "DOAJ")) +
+#  theme_minimal() +
+#  theme(legend.position = "none")
+#ggsave("~/Desktop/OpenAlex_journals_dataset/figure4.png", width = 6.27, height = 3.14, dpi = 300)
 
 
-## FIGURE 5 mapas como los de Elvira?
+## FIGURE 5
+publications_2023 <- list.files(path = "~/Desktop/OpenAlex_journals_dataset/publications_local_variable", pattern = "^local_research_OA2410_publications_local_variable_\\d{12}$", full.names = TRUE)
+publications_2023 <- rbindlist(lapply(publications_2023, fread, sep = ","), fill = TRUE)
+
+# count number of articles per country and journal
+publications_2023 <- publications_2023 %>% group_by(journal_id, journal_name, country) %>%
+                                           summarise(article_count = n(), .groups = "drop")
+
+# sum the number of articles per country to know their 2023 publications total within all OpenAlex journals
+publications_2023_all <- publications_2023 %>% group_by(country) %>%
+                                               summarise(article_total = n(), .groups = "drop")
+
+# sum the number of articles per country to know their 2023 publications total within locally informed research journals, and compute the proportion of articles in locally informed research journals with respect to all their 2023 publications
+publications_2023_inf <- publications_2023 %>% filter(journal_id %in% locally_informed_res$OA_source_ID) %>%
+                                               group_by(country) %>%
+                                               summarise(article_total = n(), .groups = "drop")
+publications_2023_inf <- publications_2023_inf %>% mutate(article_share = article_total / 
+                                                   publications_2023_all$article_total[match(country, publications_2023_all$country)])
+
+# sum the number of articles per country to know their 2023 publications total within locally relevant research journals, and compute the proportion of articles in locally relevant research journals with respect to all their 2023 publications
+publications_2023_rel <- publications_2023 %>% filter(journal_id %in% locally_relevant_res$OA_source_ID) %>%
+                                               group_by(country) %>%
+                                               summarise(article_total = n(), .groups = "drop")
+publications_2023_rel <- publications_2023_rel %>% mutate(article_share = article_total / 
+                                                            publications_2023_all$article_total[match(country, publications_2023_all$country)])
+
+# sum the number of articles per country to know their 2023 publications total within locally situated research journals, and compute the proportion of articles in locally situated research journals with respect to all their 2023 publications
+publications_2023_sit <- publications_2023 %>% filter(journal_id %in% locally_situated_res$OA_source_ID) %>%
+                                               group_by(country) %>%
+                                               summarise(article_total = n(), .groups = "drop")
+publications_2023_sit <- publications_2023_sit %>% mutate(article_share = article_total / 
+                                                            publications_2023_all$article_total[match(country, publications_2023_all$country)])
+
+# load world shapefile
+world <- ne_countries(scale = "medium", returnclass = "sf")
+
+# correct country names to macth those in world dataframe
+publications_2023_sit$country[publications_2023_sit$country == "Bahamas"] <- "The Bahamas"
+publications_2023_sit$country[publications_2023_sit$country == "Congo Republic"] <- "Republic of the Congo"
+publications_2023_rel$country[publications_2023_rel$country == "Curacao"] <- "Curaçao"
+publications_2023_rel$country[publications_2023_rel$country == "DR Congo"] <- "Democratic Republic of the Congo"
+publications_2023_rel$country[publications_2023_rel$country == "Eswatini"] <- "eSwatini"
+publications_2023_rel$country[publications_2023_rel$country == "French Guiana"] <- "NA"
+publications_2023_sit$country[publications_2023_sit$country == "Gibraltar"] <- "NA"
+publications_2023_rel$country[publications_2023_rel$country == "Guadeloupe"] <- "NA"
+publications_2023_rel$country[publications_2023_rel$country == "Hong Kong"] <- "Hong Kong S.A.R."
+publications_2023_rel$country[publications_2023_rel$country == "Macao"] <- "Macao S.A.R"
+publications_2023_rel$country[publications_2023_rel$country == "Martinique"] <- "NA"
+publications_2023_sit$country[publications_2023_sit$country == "Micronesia"] <- "Federated States of Micronesia"
+publications_2023_rel$country[publications_2023_rel$country == "Palestinian Territory"] <- "Palestine"
+publications_2023_rel$country[publications_2023_rel$country == "Réunion"] <- "NA"
+publications_2023_rel$country[publications_2023_rel$country == "Sao Tome and Principe"] <- "São Tomé and Príncipe"
+publications_2023_rel$country[publications_2023_rel$country == "Serbia"] <- "Republic of Serbia"
+publications_2023_rel$country[publications_2023_rel$country == "St Kitts and Nevis"] <- "Saint Kitts and Nevis"
+publications_2023_sit$country[publications_2023_sit$country == "Svalbard and Jan Mayen"] <- "NA"
+publications_2023_rel$country[publications_2023_rel$country == "Tanzania"] <- "United Republic of Tanzania"
+publications_2023_rel$country[publications_2023_rel$country == "The Netherlands"] <- "Netherlands"
+publications_2023_rel$country[publications_2023_rel$country == "Timor-Leste"] <- "East Timor"
+publications_2023_rel$country[publications_2023_rel$country == "Türkiye"] <- "Turkey"
+publications_2023_rel$country[publications_2023_rel$country == "U.S. Virgin Islands"] <- "United States Virgin Islands"
+publications_2023_rel$country[publications_2023_rel$country == "United States"] <- "United States of America"
+
+# merge using full country names
+publications_2023_rel_map <- world %>% left_join(publications_2023_rel, by = c("admin" = "country"))
+
+# plot all maps
+ggplot(publications_2023_rel_map) +
+  geom_sf(aes(fill = article_share), color = "gray90", size = 0.1) +
+  scale_fill_gradient(low = "#e0f7ff", high = "#005f85", na.value = "grey80",
+                      name = "Share of Articles") +
+  labs(x = NULL, y = NULL) +
+  theme_minimal() +
+  theme(legend.position = "right",
+        legend.title = element_text(size = 10),
+        legend.text = element_text(size = 9),
+        panel.grid = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        panel.background = element_rect(fill = "white", color = NA),
+        plot.background = element_rect(fill = "white", color = NA))
+ggsave("~/Desktop/OpenAlex_journals_dataset/figure5_rel_map.png", width = 12, height = 6, dpi = 600)
+
+# create pie charts data to show on top of the map
+publications_2023_rel_main <- publications_2023 %>% filter(journal_id %in% (locally_relevant_res %>%
+                                                                            filter(!is.na(MJL_ID) | !is.na(JCR_ID) | !is.na(SCOP_ID) | !is.na(SJR_ID) | !is.na(CWTS_ID)) %>%
+                                                                            pull(OA_source_ID))) %>%
+                                                                            group_by(country) %>%
+                                                                            summarise(article_count = n(), .groups = "drop")
+
+publications_2023_rel_pie <- data.frame(Indexing = c("Non-mainstream", "Mainstream"), Value = c(81, 19))
+
+ggplot(publications_2023_rel_pie, aes(x = "", y = Value, fill = Indexing)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar(theta = "y") +
+  scale_fill_manual(values = c("Non-mainstream" = "#53b400", "Mainstream" = "#fb61d7")) +
+  theme_void() +
+  theme(legend.position = "right")
+ggsave("~/Desktop/OpenAlex_journals_dataset/figure5_rel_Mexico.png", width = 6.27, height = 3.14, dpi = 300)
 
 
 #write.csv(ddff_megamerge, "~/Desktop/OpenAlex_journals_dataset/mega_merge.csv")
