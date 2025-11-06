@@ -5,6 +5,7 @@ library(tidyr)
 library(data.table)
 library(readxl)
 library(readr)
+library(jsonlite)
 library(stringr)
 library(purrr)
 library(bit64)
@@ -702,6 +703,25 @@ ddff_megamerge <- ddff_megamerge %>% left_join(local_variable_refs %>%
                                                by = c("OA_source_ID" = "journal_id"))
 
 
+# save as RDS and CSV through JSON for sharing purposes
+saveRDS(ddff_megamerge, "~/Desktop/OpenAlex_journals_dataset/mega_merge.rds")
+ddff_megamerge_flat <- ddff_megamerge %>% mutate(other_IDs = sapply(other_IDs, toJSON, auto_unbox = TRUE),
+                                                 other_source_IDs = sapply(other_source_IDs, toJSON, auto_unbox = TRUE),
+                                                 ISSN_codes = sapply(ISSN_codes, toJSON, auto_unbox = TRUE),
+                                                 journal_name = sapply(journal_name, toJSON, auto_unbox = TRUE),
+                                                 journal_name_variants = sapply(journal_name_variants, toJSON, auto_unbox = TRUE),
+                                                 publisher = sapply(publisher, toJSON, auto_unbox = TRUE),
+                                                 country = sapply(country, toJSON, auto_unbox = TRUE),
+                                                 language = sapply(language, toJSON, auto_unbox = TRUE),
+                                                 coverage = sapply(coverage, toJSON, auto_unbox = TRUE),
+                                                 open_access = sapply(open_access, toJSON, auto_unbox = TRUE),
+                                                 APC_prices = sapply(APC_prices, toJSON, auto_unbox = TRUE),
+                                                 website = sapply(website, toJSON, auto_unbox = TRUE),
+                                                 total_articles = sapply(total_articles, toJSON, auto_unbox = TRUE),
+                                                 total_citations = sapply(total_citations, toJSON, auto_unbox = TRUE))
+write.csv(ddff_megamerge_flat, "~/Desktop/OpenAlex_journals_dataset/mega_merge.csv", row.names = FALSE)
+
+
 ### FIGURES
 ## FIGURE 1
 # manually build the vector to plot databases overlap
@@ -995,4 +1015,3 @@ ggplot(publications_2023_rel_pie, aes(x = "", y = Value, fill = Indexing)) +
 ggsave("~/Desktop/OpenAlex_journals_dataset/figure5_rel_Mexico.png", width = 6.27, height = 3.14, dpi = 300)
 
 
-#write.csv(ddff_megamerge, "~/Desktop/OpenAlex_journals_dataset/mega_merge.csv")
