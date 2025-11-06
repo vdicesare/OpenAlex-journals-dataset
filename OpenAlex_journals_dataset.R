@@ -6,6 +6,7 @@ library(data.table)
 library(readxl)
 library(readr)
 library(stringr)
+library(purrr)
 library(bit64)
 library(ggplot2)
 library(ggridges)
@@ -567,7 +568,7 @@ local_variable_cits <- local_variable_cits %>% group_by(journal_id, journal_name
 local_variable_cits <- local_variable_cits %>% mutate(cits_prop = round(cits_count / cits_total, 2))
 
 
-## PUBLICATIONS
+## AUTHORS
 local_variable_pubs <- list.files(path = "~/Desktop/OpenAlex_journals_dataset/publications_local_variable", pattern = "^local_research_OA2410_publications_local_variable_\\d{12}$", full.names = TRUE)
 local_variable_pubs <- rbindlist(lapply(local_variable_pubs, fread, sep = ","), fill = TRUE)
 
@@ -641,10 +642,43 @@ local_variable_tops_2 <- local_variable_tops_2 %>% distinct()
 
 
 ## LANGUAGES
-# ddff_megamerge, buscar la presencia de "ENG" o "English" en la variable anidada language. Traer los datos language de OpenAlex. Guardar como 1-0 en una nueva variable languages_local_variable
+# incorporate the OpenAlex language data to ddff_megamerge
+local_variable_langs <- readr::read_csv("~/Desktop/OpenAlex_journals_dataset/languages_local_variable/local_research_OA2410_languages_local_variable")
+local_variable_langs <- local_variable_langs %>% group_by(journal_id, journal_name) %>%
+                                                 summarise(language = str_c(unique(language), collapse = "; ")) %>%
+                                                 ungroup()
+
+ddff_megamerge <- ddff_megamerge %>% left_join(local_variable_langs %>%
+                                     mutate(journal_id = as.character(journal_id)) %>%
+                                     select(journal_id, OA_language = language), by = c("OA_source_ID" = "journal_id")) %>%
+                                     mutate(language = map2(language, OA_language, ~ {.x$OA_language <- .y
+                                                                                      .x})) %>%
+                                     select(-OA_language)
+
+# look for expressions "ENG", "English" or "en" to create local binary variable langs, where 1 is global and 0 is local
+ddff_megamerge <- ddff_megamerge %>% mutate(langs = map_int(language, ~ {clean_text <- function(x) {if (is.null(x) || all(is.na(x))) return(NA_character_)
+                                                                         x <- unique(na.omit(str_trim(as.character(x))))
+                                                                         if (length(x) == 0) return(NA_character_)
+                                                                         paste(x, collapse = "; ")}
+                                     mjl  <- clean_text(.x$MJL_language)
+                                     scop <- clean_text(.x$SCOP_language)
+                                     doaj <- clean_text(.x$DOAJ_language)
+                                     oa   <- clean_text(.x$OA_language)
+                                     is_english <- function(x) {!is.na(x) && str_detect(tolower(x), "\\benglish\\b|\\beng\\b|\\ben\\b")}
+                                     is_empty <- function(x) is.na(x) || str_trim(x) == ""
+                                     if (!is_empty(mjl) || !is_empty(scop)) {
+                                       if (is_english(mjl) || is_english(scop)) 1L else 0L}
+                                     else if (!is_empty(doaj)) {
+                                       if (is_english(doaj)) 1L else 0L}
+                                     else {if (is_english(oa)) 1L else 0L}}))
 
 
 ## DATABASES
+# look for data within MJL_ID or SCOP_ID to create local binary variable mains, where 1 is global and 0 is local
+ddff_megamerge <- ddff_megamerge %>% mutate(mains = map_int(other_IDs, ~ {mjl  <- .x$MJL_ID
+                                                                          scop <- .x$SCOP_ID
+                                                                          valid <- function(x) {!is.null(x) && !all(is.na(x)) && any(str_trim(as.character(x)) != "")}
+                                                                          if (valid(mjl) || valid(scop)) 1L else 0L}))
 
 
 # incorporate the local variables to ddff_megamerge
