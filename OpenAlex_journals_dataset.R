@@ -722,7 +722,7 @@ ddff_megamerge_flat <- ddff_megamerge %>% mutate(other_IDs = sapply(other_IDs, t
 write.csv(ddff_megamerge_flat, "~/Desktop/OpenAlex_journals_dataset/mega_merge.csv", row.names = FALSE)
 
 
-### FIGURES
+### METHODOLOGY
 ## FIGURE 1
 # manually build the vector to plot databases overlap
 figure1 <- c(OpenAlex = 40619, MJL = 0, JCR = 0, Scopus = 0, SJR = 0, CWTS = 0, DOAJ = 0,
@@ -747,22 +747,82 @@ figure1 <- figure1[grepl("&", names(figure1)) & figure1 > 0]
 
 # plot
 figure1 <- upset(fromExpression(figure1),
-                      nintersects = NA,
-                      nsets = 7,
-                      sets = c("OpenAlex", "MJL", "JCR", "Scopus", "SJR", "CWTS", "DOAJ"),
-                      mainbar.y.label = "Intersection size",
-                      main.bar.color = "#F8766D",
-                      sets.x.label = "Set size",
-                      point.size = 1.5,
-                      matrix.color = "grey50",
-                      line.size = 0.5,
-                      order.by = "freq", 
-                      decreasing = TRUE,
-                      show.numbers = "no",
-                      mb.ratio = c(0.5, 0.5))
+                 nintersects = NA,
+                 nsets = 7,
+                 sets = c("OpenAlex", "MJL", "JCR", "Scopus", "SJR", "CWTS", "DOAJ"),
+                 mainbar.y.label = "Intersection size",
+                 main.bar.color = "#F8766D",
+                 sets.x.label = "Set size",
+                 point.size = 1.5,
+                 matrix.color = "grey50",
+                 line.size = 0.5,
+                 order.by = "freq", 
+                 decreasing = TRUE,
+                 show.numbers = "no",
+                 mb.ratio = c(0.5, 0.5))
 png(filename = "~/Desktop/OpenAlex_journals_dataset/figure1.png", width = 6.27, height = 3.14, units = "in", res = 300)
 print(figure1)
 dev.off()
+
+
+## TABLE 1
+ddff_megamerge %>% mutate(MJL_ID = map_chr(other_IDs, ~ .x$MJL_ID %||% NA_character_),
+                          JCR_ID  = map_chr(other_IDs, ~ .x$JCR_ID  %||% NA_character_)) %>%
+                   mutate(any_ID = coalesce(MJL_ID, JCR_ID)) %>%
+                   summarise(unique_journals_with_any_ID = n_distinct(na.omit(any_ID))) %>%
+                   pull(unique_journals_with_any_ID)
+
+ddff_megamerge %>% mutate(MJL_ID = map_chr(other_IDs, ~ {ids <- .x$MJL_ID
+                                           if (is.null(ids) || all(is.na(ids))) NA_character_ else paste(unique(na.omit(as.character(ids))), collapse = ";")}),
+                                           JCR_ID = map_chr(other_IDs, ~ {ids <- .x$JCR_ID
+                                           if (is.null(ids) || all(is.na(ids))) NA_character_ else paste(unique(na.omit(as.character(ids))), collapse = ";")}),
+                                   journal_key = coalesce(OA_ID, OA_source_ID)) %>%
+                   filter((!is.na(MJL_ID) & MJL_ID != "") | (!is.na(JCR_ID)  & JCR_ID  != "")) %>%
+                   filter(!is.na(OA_domains), OA_domains != "", OA_domains != "NA") %>%
+                   mutate(OA_domains = strsplit(OA_domains, ";\\s*")) %>%
+                   unnest(OA_domains) %>%
+                   mutate(OA_domains = str_trim(OA_domains)) %>%
+                   filter(!is.na(OA_domains), OA_domains != "", OA_domains != "NA") %>%
+                   distinct(journal_key, OA_domains) %>%
+                   group_by(journal_key) %>%
+                   mutate(n_domains = n(), weight = 1 / n_domains) %>%
+                   ungroup() %>%
+                   group_by(OA_domains) %>%
+                   summarise(fractional_count = sum(weight, na.rm = TRUE), .groups = "drop") %>%
+                   arrange(desc(fractional_count)) %>%
+                   print(n = Inf)
+
+
+### RESULTS
+## ACCESS SECTION
+# add variable mains_access according to open_access variable, where 1 is FALSE (OA_open_access) or NA (SCOP_open_access or DOAJ_open_access), and 0 is TRUE (OA_open_access), Unpaywall Open Access (SCOP_open_access) or Yes (DOAJ_open_access)
+ddff_megamerge <- ddff_megamerge %>% mutate(mains_access = map_int(open_access, ~ {clean_val <- function(x) {
+                                                                                   if (is.null(x) || all(is.na(x))) return(NA_character_)
+                                                                                   x <- unique(na.omit(str_trim(as.character(x))))
+                                                                                   if (length(x) == 0) return(NA_character_)
+                                                                                   x[1]}
+                                                           scop <- clean_val(.x$SCOP_open_access)
+                                                           doaj <- clean_val(.x$DOAJ_open_access)
+                                                           oa   <- clean_val(.x$OA_open_access)
+                                                           if (all(is.na(c(scop, doaj, oa)))) return(NA_integer_)
+                                                           is_open <- function(x, source = NULL) {if (is.na(x)) return(FALSE)
+                                             if (source == "scop") return(x == "Unpaywall Open Access")
+                                             if (source == "doaj") return(tolower(x) == "yes")
+                                             if (source == "oa") return(x == TRUE) FALSE}
+                                                           if (is_open(scop, "scop")) 0L
+                                                           else if (is_open(doaj, "doaj")) 0L
+                                                           else if (is_open(oa, "oa")) 0L
+                                                           else 1L}))
+
+
+## LANGUAGE SECTION
+# add variable mains_lang according to local variable langs, where 1 is mainstream
+ddff_megamerge <- ddff_megamerge %>% mutate(mains_lang = langs)
+
+
+## INDEXING SECTION
+# add variable mains_index according to local variable mains, where 1 is mainstream
+ddff_megamerge <- ddff_megamerge %>% mutate(mains_index = mains)
 
 
 ## FIGURE 2
