@@ -10,6 +10,7 @@ library(stringr)
 library(purrr)
 library(bit64)
 library(ggplot2)
+library(ggforce)
 library(ggridges)
 library(sf)
 library(rnaturalearth)
@@ -703,6 +704,30 @@ ddff_megamerge <- ddff_megamerge %>% left_join(local_variable_refs %>%
                                                by = c("OA_source_ID" = "journal_id"))
 
 
+## LOCAL JOURNALS BY TERRITORY
+# create a new variable local_territory considering the 3ºQ of variable tops_prop distribution (>= 0.14)
+quantile(ddff_megamerge %>% distinct(OA_ID, .keep_all = TRUE) %>% pull(tops_prop), 0.75, na.rm = TRUE)
+ddff_megamerge <- ddff_megamerge %>% group_by(OA_ID) %>%
+                                     mutate(local_territory = if_else(tops_prop >= 0.14, "local", "global")) %>%
+                                     ungroup()
+
+
+## LOCAL JOURNALS BY PRODUCERS
+# create a new variable local_producers considering the 3ºQ of variable refs_prop distribution (>= 0.43)
+quantile(ddff_megamerge %>% distinct(OA_ID, .keep_all = TRUE) %>% pull(refs_prop), 0.75, na.rm = TRUE)
+ddff_megamerge <- ddff_megamerge %>% group_by(OA_ID) %>%
+                                     mutate(local_producers = if_else(refs_prop >= 0.43, "local", "global")) %>%
+                                     ungroup()
+
+
+## LOCAL JOURNALS BY RECIPIENTS
+# create a new variable local_recipients considering the 3ºQ of variable cits_prop distribution (= 1)
+quantile(ddff_megamerge %>% distinct(OA_ID, .keep_all = TRUE) %>% pull(cits_prop), 0.75, na.rm = TRUE)
+ddff_megamerge <- ddff_megamerge %>% group_by(OA_ID) %>%
+                                     mutate(local_recipients = if_else(cits_prop == 1, "local", "global")) %>%
+                                     ungroup()
+
+
 # save as RDS and CSV through JSON for sharing purposes
 saveRDS(ddff_megamerge, "~/Desktop/OpenAlex_journals_dataset/mega_merge.rds")
 ddff_megamerge_flat <- ddff_megamerge %>% mutate(other_IDs = sapply(other_IDs, toJSON, auto_unbox = TRUE),
@@ -722,56 +747,66 @@ ddff_megamerge_flat <- ddff_megamerge %>% mutate(other_IDs = sapply(other_IDs, t
 write.csv(ddff_megamerge_flat, "~/Desktop/OpenAlex_journals_dataset/mega_merge.csv", row.names = FALSE)
 
 
-### METHODOLOGY
-## FIGURE 1
-# manually build the vector to plot databases overlap
-figure1 <- c(OpenAlex = 40619, MJL = 0, JCR = 0, Scopus = 0, SJR = 0, CWTS = 0, DOAJ = 0,
-             "OpenAlex&MJL" = 46, "OpenAlex&JCR" = 5, "OpenAlex&Scopus" = 1296, "OpenAlex&SJR" = 5, "OpenAlex&CWTS" = 86, "OpenAlex&DOAJ" = 7941,
-             "OpenAlex&MJL&JCR" = 865, "OpenAlex&MJL&Scopus" = 14, "OpenAlex&MJL&SJR" = 0, "OpenAlex&MJL&CWTS" = 1, "OpenAlex&MJL&DOAJ" = 47,
-             "OpenAlex&JCR&Scopus" = 0, "OpenAlex&JCR&SJR" = 0, "OpenAlex&JCR&CWTS" = 0, "OpenAlex&JCR&DOAJ" = 4,
-             "OpenAlex&Scopus&SJR" = 110, "OpenAlex&Scopus&CWTS" = 1, "OpenAlex&Scopus&DOAJ" = 511,
-             "OpenAlex&SJR&CWTS" = 112, "OpenAlex&SJR&DOAJ" = 0, "OpenAlex&CWTS&DOAJ" = 6,
-             "OpenAlex&MJL&JCR&Scopus" = 101, "OpenAlex&MJL&JCR&SJR" = 1, "OpenAlex&MJL&JCR&CWTS" = 20, "OpenAlex&MJL&JCR&DOAJ" = 813, "OpenAlex&MJL&Scopus&SJR" = 2, "OpenAlex&MJL&Scopus&CWTS" = 0, "OpenAlex&MJL&Scopus&DOAJ" = 61, "OpenAlex&MJL&SJR&CWTS" = 3, "OpenAlex&MJL&SJR&DOAJ" = 0, "OpenAlex&MJL&CWTS&DOAJ" = 0,
-             "OpenAlex&JCR&Scopus&SJR" = 0, "OpenAlex&JCR&Scopus&CWTS" = 0, "OpenAlex&JCR&Scopus&DOAJ" = 0, "OpenAlex&JCR&SJR&CWTS" = 13, "OpenAlex&JCR&SJR&DOAJ" = 0, "OpenAlex&JCR&CWTS&DOAJ" = 0,
-             "OpenAlex&Scopus&SJR&CWTS" = 3317, "OpenAlex&Scopus&SJR&DOAJ" = 29, "OpenAlex&Scopus&CWTS&DOAJ" = 2,
-             "OpenAlex&SJR&CWTS&DOAJ" = 13,
-             "OpenAlex&MJL&JCR&Scopus&SJR" = 165, "OpenAlex&MJL&JCR&Scopus&CWTS" = 5, "OpenAlex&MJL&JCR&Scopus&DOAJ" = 132, "OpenAlex&MJL&JCR&SJR&CWTS" = 44, "OpenAlex&MJL&JCR&SJR&DOAJ" = 0, "OpenAlex&MJL&JCR&CWTS&DOAJ" = 13, "OpenAlex&MJL&Scopus&SJR&CWTS" = 129, "OpenAlex&MJL&Scopus&SJR&DOAJ" = 3, "OpenAlex&MJL&Scopus&CWTS&DOAJ" = 0, "OpenAlex&MJL&SJR&CWTS&DOAJ" = 0,
-             "OpenAlex&JCR&Scopus&SJR&CWTS" = 21, "OpenAlex&JCR&Scopus&SJR&DOAJ" = 0, "OpenAlex&JCR&Scopus&CWTS&DOAJ" = 0, "OpenAlex&JCR&SJR&CWTS&DOAJ" = 5,
-             "OpenAlex&Scopus&SJR&CWTS&DOAJ" = 2038,
-             "OpenAlex&MJL&JCR&Scopus&SJR&CWTS" = 13329, "OpenAlex&MJL&JCR&Scopus&SJR&DOAJ" = 19, "OpenAlex&MJL&JCR&Scopus&CWTS&DOAJ" = 0, "OpenAlex&MJL&JCR&SJR&CWTS&DOAJ" = 14, "OpenAlex&MJL&Scopus&SJR&CWTS&DOAJ" = 131,
-             "OpenAlex&JCR&Scopus&SJR&CWTS&DOAJ" = 7,
-             "OpenAlex&MJL&JCR&Scopus&SJR&CWTS&DOAJ" = 4462)
+### OVERALL RESULTS
+## FIGURE 2
+my_colors <- list(OpenAlex = "#3288BD", MJL = "#D53E4F", JCR = "#F46D43",
+                  Scopus = "#FDAE61", SJR = "#FEE08B", CWTS = "#E6F598", DOAJ = "#66C2A5")
 
-# keep only cases with more than one set and values > 0
-figure1 <- figure1[grepl("&", names(figure1)) & figure1 > 0]
+# function to compute the overlap areas and plot accordingly
+draw_2set_venn <- function(set1_size, set2_size, intersection_size) {
+                           r1 <- sqrt(set1_size / pi)
+                           r2 <- sqrt(set2_size / pi)
+                  overlap_area <- function(d, r1, r2) {
+                                           if(d >= r1 + r2) return(0)
+                                           if(d <= abs(r1 - r2)) return(pi * min(r1,r2)^2)
+                                            acos((d^2 + r1^2 - r2^2)/(2*d*r1))*r1^2 +
+                                            acos((d^2 + r2^2 - r1^2)/(2*d*r2))*r2^2 -
+                                            0.5*sqrt((-d+r1+r2)*(d+r1-r2)*(d-r1+r2)*(d+r1+r2))}
+                  d <- uniroot(function(d) overlap_area(d, r1, r2) - intersection_size,
+                                        lower = 0, upper = r1 + r2)$root
+                  circles <- data.frame(x = c(0, d),
+                                        y = c(0, 0),
+                                        r = c(r1, r2),
+                                        set = factor(c("Set 1", "Set 2")))
+                  p <- ggplot(circles) +
+                    geom_circle(aes(x0 = x, y0 = y, r = r, fill = set), alpha = 0.7, color = "grey") +
+                    coord_fixed() +
+                    theme_minimal() +
+                    scale_fill_manual(values = c("Set 1" = my_colors[["OpenAlex"]], "Set 2" = my_colors[["MJL"]])) +
+                    theme(legend.position = "none", axis.text = element_blank(), axis.title = element_blank(), axis.ticks = element_blank())
+                  return(p)}
 
-# plot
-figure1 <- upset(fromExpression(figure1),
-                 nintersects = NA,
-                 nsets = 7,
-                 sets = c("OpenAlex", "MJL", "JCR", "Scopus", "SJR", "CWTS", "DOAJ"),
-                 mainbar.y.label = "Intersection size",
-                 main.bar.color = "#F8766D",
-                 sets.x.label = "Set size",
-                 point.size = 1.5,
-                 matrix.color = "grey50",
-                 line.size = 0.5,
-                 order.by = "freq", 
-                 decreasing = TRUE,
-                 show.numbers = "no",
-                 mb.ratio = c(0.5, 0.5))
-png(filename = "~/Desktop/OpenAlex_journals_dataset/figure1.png", width = 6.27, height = 3.14, units = "in", res = 300)
-print(figure1)
-dev.off()
+# sets and intersections
+OA_size <- 75694
+MJL_size <- 22455
+OA_MJL_intersection <- 20419
+JCR_size <- 21988
+OA_JCR_intersection <- 20038
+SCOP_size <- 29221
+OA_SCOP_intersection <- 24997
+SJR_size <- 28174
+OA_SJR_intersection <- 23963
+CWTS_size <- 27879
+OA_CWTS_intersection <- 23759
+DOAJ_size <- 20955
+OA_DOAJ_intersection <- 16242
+
+# final drawing of the Venn diagram
+p <- draw_2set_venn(set1_size = OA_size,
+                    set2_size = MJL_size,
+                    intersection_size = OA_MJL_intersection)
+ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig2_OA_MJL.png", p, width = 6, height = 6, dpi = 300)
 
 
 ## TABLE 1
+# count unique journals with MJL or JCR IDs in order to group under WOS. The same can be done for Scopus and its sources SCOP, SJR and CWTS
 ddff_megamerge %>% mutate(MJL_ID = map_chr(other_IDs, ~ .x$MJL_ID %||% NA_character_),
                           JCR_ID  = map_chr(other_IDs, ~ .x$JCR_ID  %||% NA_character_)) %>%
                    mutate(any_ID = coalesce(MJL_ID, JCR_ID)) %>%
                    summarise(unique_journals_with_any_ID = n_distinct(na.omit(any_ID))) %>%
                    pull(unique_journals_with_any_ID)
 
+# fractional count of unique WOS journals by knowledge field. The same can be done for Scopus, DOAJ and OpenAlex
 ddff_megamerge %>% mutate(MJL_ID = map_chr(other_IDs, ~ {ids <- .x$MJL_ID
                                            if (is.null(ids) || all(is.na(ids))) NA_character_ else paste(unique(na.omit(as.character(ids))), collapse = ";")}),
                                            JCR_ID = map_chr(other_IDs, ~ {ids <- .x$JCR_ID
@@ -792,262 +827,273 @@ ddff_megamerge %>% mutate(MJL_ID = map_chr(other_IDs, ~ {ids <- .x$MJL_ID
                    arrange(desc(fractional_count)) %>%
                    print(n = Inf)
 
+# count unique WOS journals that are local according to local_territory, local_producers and local_recipients variables. The same can be done for Scopus, DOAJ and OpenAlex
+ddff_megamerge %>% mutate(MJL_ID = map_chr(other_IDs, ~ .x$MJL_ID %||% NA_character_),
+                          JCR_ID = map_chr(other_IDs, ~ .x$JCR_ID %||% NA_character_),
+                          WOS_ID = coalesce(MJL_ID, JCR_ID)) %>%
+                   filter(local_territory == "local") %>%
+                   summarise(unique_local_WOS_journals = n_distinct(na.omit(WOS_ID))) %>%
+                   pull(unique_local_WOS_journals)
 
-### RESULTS
-## ACCESS SECTION
-# add variable mains_access according to open_access variable, where 1 is FALSE (OA_open_access) or NA (SCOP_open_access or DOAJ_open_access), and 0 is TRUE (OA_open_access), Unpaywall Open Access (SCOP_open_access) or Yes (DOAJ_open_access)
-ddff_megamerge <- ddff_megamerge %>% mutate(mains_access = map_int(open_access, ~ {clean_val <- function(x) {
-                                                                                   if (is.null(x) || all(is.na(x))) return(NA_character_)
-                                                                                   x <- unique(na.omit(str_trim(as.character(x))))
-                                                                                   if (length(x) == 0) return(NA_character_)
-                                                                                   x[1]}
-                                                           scop <- clean_val(.x$SCOP_open_access)
-                                                           doaj <- clean_val(.x$DOAJ_open_access)
-                                                           oa   <- clean_val(.x$OA_open_access)
-                                                           if (all(is.na(c(scop, doaj, oa)))) return(NA_integer_)
-                                                           is_open <- function(x, source = NULL) {if (is.na(x)) return(FALSE)
-                                             if (source == "scop") return(x == "Unpaywall Open Access")
-                                             if (source == "doaj") return(tolower(x) == "yes")
-                                             if (source == "oa") return(x == TRUE) FALSE}
-                                                           if (is_open(scop, "scop")) 0L
-                                                           else if (is_open(doaj, "doaj")) 0L
-                                                           else if (is_open(oa, "oa")) 0L
-                                                           else 1L}))
+# fractional count of unique WOS journals by knowledge field, according to local_territory, local_producers and local_recipients variables. The same can be done for Scopus, DOAJ and OpenAlex
+ddff_megamerge %>% mutate(MJL_ID = map_chr(other_IDs, ~ {ids <- .x$MJL_ID
+                                           if (is.null(ids) || all(is.na(ids))) NA_character_ else paste(unique(na.omit(as.character(ids))), collapse = ";")}),
+                                           JCR_ID = map_chr(other_IDs, ~ {ids <- .x$JCR_ID
+                                           if (is.null(ids) || all(is.na(ids))) NA_character_ else paste(unique(na.omit(as.character(ids))), collapse = ";")}),
+                                   journal_key = coalesce(OA_ID, OA_source_ID)) %>%
+                   filter(local_territory == "local", (!is.na(MJL_ID) & MJL_ID != "") | (!is.na(JCR_ID) & JCR_ID != "")) %>%
+                   filter(!is.na(OA_domains), OA_domains != "", OA_domains != "NA") %>%
+                   mutate(OA_domains = strsplit(OA_domains, ";\\s*")) %>%
+                   unnest(OA_domains) %>%
+                   mutate(OA_domains = str_trim(OA_domains)) %>%
+                   filter(!is.na(OA_domains), OA_domains != "", OA_domains != "NA") %>%
+                   distinct(journal_key, OA_domains) %>%
+                   group_by(journal_key) %>%
+                   mutate(n_domains = n(), weight = 1 / n_domains) %>%
+                   ungroup() %>%
+                   group_by(OA_domains) %>%
+                   summarise(fractional_count = sum(weight, na.rm = TRUE), .groups = "drop") %>%
+                   arrange(desc(fractional_count)) %>%
+                   print(n = Inf)
+
+# count unique WOS journals in non-English language according to langs variable. The same can be done for Scopus, DOAJ and OpenAlex
+ddff_megamerge %>% mutate(MJL_ID = map_chr(other_IDs, ~ .x$MJL_ID %||% NA_character_),
+                          JCR_ID = map_chr(other_IDs, ~ .x$JCR_ID %||% NA_character_),
+                          WOS_ID = coalesce(MJL_ID, JCR_ID)) %>%
+                   filter(langs == 0) %>%
+                   summarise(unique_local_WOS_journals = n_distinct(na.omit(WOS_ID))) %>%
+                   pull(unique_local_WOS_journals)
+
+# fractional count of unique WOS journals by knowledge field, according to langs variable. The same can be done for Scopus, DOAJ and OpenAlex
+ddff_megamerge %>% mutate(MJL_ID = map_chr(other_IDs, ~ {ids <- .x$MJL_ID
+                                           if (is.null(ids) || all(is.na(ids))) NA_character_ else paste(unique(na.omit(as.character(ids))), collapse = ";")}),
+                                           JCR_ID = map_chr(other_IDs, ~ {ids <- .x$JCR_ID
+                                           if (is.null(ids) || all(is.na(ids))) NA_character_ else paste(unique(na.omit(as.character(ids))), collapse = ";")}),
+                                   journal_key = coalesce(OA_ID, OA_source_ID)) %>%
+                   filter(langs == 0, (!is.na(MJL_ID) & MJL_ID != "") | (!is.na(JCR_ID) & JCR_ID != "")) %>%
+                   filter(!is.na(OA_domains), OA_domains != "", OA_domains != "NA") %>%
+                   mutate(OA_domains = strsplit(OA_domains, ";\\s*")) %>%
+                   unnest(OA_domains) %>%
+                   mutate(OA_domains = str_trim(OA_domains)) %>%
+                   filter(!is.na(OA_domains), OA_domains != "", OA_domains != "NA") %>%
+                   distinct(journal_key, OA_domains) %>%
+                   group_by(journal_key) %>%
+                   mutate(n_domains = n(), weight = 1 / n_domains) %>%
+                   ungroup() %>%
+                   group_by(OA_domains) %>%
+                   summarise(fractional_count = sum(weight, na.rm = TRUE), .groups = "drop") %>%
+                   arrange(desc(fractional_count)) %>%
+                   print(n = Inf)
+
+# count unique WOS journals that are open access according to apen_access nested variable. The same can be done for Scopus, DOAJ and OpenAlex
+ddff_megamerge %>% mutate(MJL_ID = map_chr(other_IDs, ~ .x$MJL_ID %||% NA_character_),
+                          JCR_ID = map_chr(other_IDs, ~ .x$JCR_ID %||% NA_character_),
+                          WOS_ID = coalesce(MJL_ID, JCR_ID)) %>%
+                   filter(map_lgl(open_access, ~ {clean_val <- function(x) {
+                     if (is.null(x) || all(is.na(x))) return(NA_character_)
+                     x <- unique(na.omit(str_trim(as.character(x))))
+                     if (length(x) == 0) return(NA_character_)
+                     x[1]
+                   }
+                   scop <- clean_val(.x$SCOP_open_access)
+                   doaj <- clean_val(.x$DOAJ_open_access)
+                   oa   <- clean_val(.x$OA_open_access)
+                   if (!is.na(scop) && scop == "Unpaywall Open Access") return(TRUE)
+                   if (!is.na(doaj) && tolower(doaj) == "yes") return(TRUE)
+                   if (!is.na(oa)   && oa == TRUE) return(TRUE)
+                   FALSE})) %>%
+                summarise(unique_OA_WOS_journals = n_distinct(na.omit(WOS_ID))) %>%
+                pull(unique_OA_WOS_journals)
+
+# fractional count of unique WOS journals by knowledge field, according to open_access nested variable. The same can be done for Scopus, DOAJ and OpenAlex
+ddff_megamerge %>% mutate(MJL_ID = map_chr(other_IDs, ~ .x$MJL_ID %||% NA_character_),
+                          JCR_ID = map_chr(other_IDs, ~ .x$JCR_ID %||% NA_character_),
+                          WOS_ID = coalesce(MJL_ID, JCR_ID)) %>%
+                   filter(!is.na(WOS_ID) & WOS_ID != "") %>%
+                   filter(map_lgl(open_access, ~ {clean_val <- function(x) {
+                     if (is.null(x) || all(is.na(x))) return(NA_character_)
+                     x <- unique(na.omit(str_trim(as.character(x))))
+                     if (length(x) == 0) return(NA_character_)
+                     x[1]
+                   }
+                   scop <- clean_val(.x$SCOP_open_access)
+                   doaj <- clean_val(.x$DOAJ_open_access)
+                   oa   <- clean_val(.x$OA_open_access)
+                   if (!is.na(scop) && scop == "Unpaywall Open Access") return(TRUE)
+                   if (!is.na(doaj) && tolower(doaj) == "yes") return(TRUE)
+                   if (!is.na(oa)   && oa == TRUE) return(TRUE)
+                   FALSE})) %>%
+                filter(!is.na(OA_domains), OA_domains != "", OA_domains != "NA") %>%
+                mutate(OA_domains = strsplit(OA_domains, ";\\s*")) %>%
+                unnest(OA_domains) %>%
+                mutate(OA_domains = str_trim(OA_domains)) %>%
+                filter(!is.na(OA_domains), OA_domains != "", OA_domains != "NA") %>%
+                  distinct(WOS_ID, OA_domains) %>%
+                  group_by(WOS_ID) %>%
+                  mutate(n_domains = n(), weight = 1 / n_domains) %>%
+                  ungroup() %>%
+                    group_by(OA_domains) %>%
+                    summarise(fractional_count = sum(weight, na.rm = TRUE), .groups = "drop") %>%
+                    arrange(desc(fractional_count)) %>%
+                    print(n = Inf)
 
 
-## LANGUAGE SECTION
-# add variable mains_lang according to local variable langs, where 1 is mainstream
-ddff_megamerge <- ddff_megamerge %>% mutate(mains_lang = langs)
-
-
-## INDEXING SECTION
-# add variable mains_index according to local variable mains, where 1 is mainstream
-ddff_megamerge <- ddff_megamerge %>% mutate(mains_index = mains)
-
-
-## FIGURE 2
-# isolate the journals that belong to each group: locally informed, situated and relevant research considering the 3ºQ of their variables distributions respectively: refs_prop (0.43), tops_prop (0.14), cits_prop (1) + pubs_prop (0.94)
-locally_informed_res <- ddff_megamerge %>% distinct(OA_source_ID, .keep_all = TRUE) %>%
-                                           filter(refs_prop >= 0.43) %>%
-                                           select(OA_source_ID, other_IDs, refs_prop, refs_country)
-locally_informed_res <- locally_informed_res %>% unnest(other_IDs)
-
-locally_situated_res <- ddff_megamerge %>% distinct(OA_source_ID, .keep_all = TRUE) %>%
-                                           filter(tops_prop >= 0.14) %>%
-                                           select(OA_source_ID, other_IDs, tops_prop, pubs_country)
-locally_situated_res <- locally_situated_res %>% unnest(other_IDs)
-
-locally_relevant_res <- ddff_megamerge %>% distinct(OA_source_ID, .keep_all = TRUE) %>%
-                                           filter(cits_prop == 1 | pubs_prop >= 0.94) %>%
-                                           select(OA_source_ID, other_IDs, cits_prop, cits_country, pubs_prop, pubs_country)
-locally_relevant_res <- locally_relevant_res %>% unnest(other_IDs)
-
-# produce intersections diagram
-informed <- locally_informed_res %>% pull(OA_source_ID) %>% unique()
-situated <- locally_situated_res %>% pull(OA_source_ID) %>% unique()
-relevant <- locally_relevant_res %>% pull(OA_source_ID) %>% unique()
-
-informed_situated <- intersect(informed, situated)
-informed_relevant <- intersect(informed, relevant)
-situated_relevant <- intersect(situated, relevant)
-informed_situated_relevant <- Reduce(intersect, list(informed, situated, relevant))
-
-# create an Euler diagram with input data
-venn_data <- c("Locally informed research" = length(informed),
-               "Locally situated research" = length(situated),
-               "Locally relevant research" = length(relevant),
-               "Locally informed research&Locally situated research" = length(informed_situated),
-               "Locally informed research&Locally relevant research" = length(informed_relevant),
-               "Locally situated research&Locally relevant research" = length(situated_relevant),
-               "Locally informed research&Locally situated research&Locally relevant research" = length(informed_situated_relevant))
-fit <- euler(venn_data)
-
-# plot the diagram
-figure2 <- plot(fit, 
-                fills = adjustcolor(c("#7CAE00", "#00BA38", "#00BFC4"), alpha.f = 0.6),
-                labels = c("Locally Informed\nResearch", "Locally Situated\nResearch", "Locally Relevant\nResearch"),
-                edges = FALSE, 
-                quantities = list(font = ifelse(venn_data == length(informed_situated_relevant), 2, 1)))
-ggsave("~/Desktop/OpenAlex_journals_dataset/figure2.png", plot = figure2, width = 6.5, height = 6, dpi = 300)
-
+### TERRITORY RESULTS
+local_journals_territory <- ddff_megamerge %>% filter(local_territory == "local")
 
 ## FIGURE 3
-# include a categoric label in each dataframe
-locally_informed_res <- locally_informed_res %>% mutate(group = "Locally Informed Research")
-locally_situated_res <- locally_situated_res %>% mutate(group = "Locally Situated Research")
-locally_relevant_res <- locally_relevant_res %>% mutate(group = "Locally Relevant Research")
-all_journals <- ddff_megamerge %>% select(OA_source_ID, other_IDs) %>%
-                                   unnest(other_IDs) %>%
-                                   mutate(group = "All journals")
+figure3 <- local_journals_territory %>% mutate(OA_domains = strsplit(OA_domains, ";")) %>%
+                                        unnest(OA_domains) %>%
+                                        mutate(OA_domains = trimws(OA_domains)) %>%
+                                        filter(!is.na(OA_domains) & OA_domains != "") %>%
+                                        mutate(is_OA = map_lgl(open_access, ~ {if (is.null(.x)) return(FALSE)
+                                          .x$SCOP_open_access == "Unpaywall Open Access" |
+                                            .x$DOAJ_open_access == "Yes" |
+                                            .x$OA_open_access == TRUE}),
+                                          is_non_english = langs == 0,
+                                          is_overall = TRUE)
 
-# bind all data together
-figure3 <- bind_rows(locally_informed_res %>% select(group, OA_source_ID, MJL_ID, JCR_ID, SCOP_ID, SJR_ID, CWTS_ID, DOAJ_ID),
-                     locally_situated_res %>% select(group, OA_source_ID, MJL_ID, JCR_ID, SCOP_ID, SJR_ID, CWTS_ID, DOAJ_ID),
-                     locally_relevant_res %>% select(group, OA_source_ID, MJL_ID, JCR_ID, SCOP_ID, SJR_ID, CWTS_ID, DOAJ_ID),
-                     all_journals %>% select(group, OA_source_ID, MJL_ID, JCR_ID, SCOP_ID, SJR_ID, CWTS_ID, DOAJ_ID))
+figure3 <- figure3 %>% group_by(OA_ID) %>%
+                       mutate(n_fields = n_distinct(OA_domains), weight = 1 / n_fields) %>%
+                       ungroup()
 
-# convert to long format
-figure3 <- figure3 %>% pivot_longer(cols = c(OA_source_ID, MJL_ID, JCR_ID, SCOP_ID, SJR_ID, CWTS_ID, DOAJ_ID),
-                                    names_to = "source",
-                                    values_to = "id") %>%
-                                    mutate(present = !is.na(id))
-figure3 <- figure3 %>% filter(present == TRUE)
-figure3 <- figure3 %>% distinct()
-figure3 <- figure3 %>% count(group, source, name = "count") %>%
-                       group_by(group)
-figure3$source <- factor(figure3$source, levels = c("OA_source_ID", "MJL_ID", "JCR_ID", "SCOP_ID", "SJR_ID", "CWTS_ID", "DOAJ_ID"))
+figure3 <- figure3 %>% select(OA_ID, OA_domains, mains, weight, is_OA, is_non_english, is_overall) %>%
+                       distinct() %>%
+                       pivot_longer(cols = c(is_OA, is_non_english, is_overall), names_to = "group", values_to = "value") %>%
+                       filter(value == TRUE) %>%
+                       mutate(group = recode(group, "is_OA" = "Open Access", "is_non_english" = "Non-English", "is_overall" = "Overall"))
 
-ggplot(figure3, aes(x = source, y = count, fill = source)) +
-  geom_col(position = position_dodge(width = 0.8), width = 0.7) +
-  facet_wrap(~ group) +
-  labs(x = "Data Sources", y = "Number of Journals") +
-  coord_flip() +
-  scale_x_discrete(labels = c("OA_source_ID" = "OpenAlex", "MJL_ID" = "MJL", "JCR_ID" = "JCR", "SCOP_ID" = "Scopus", "SJR_ID" = "SJR", "CWTS_ID" = "CWTS", "DOAJ_ID" = "DOAJ")) +
+figure3 <- figure3 %>% filter(!OA_ID %in% c("OA18498", "OA38322", "OA39390"))
+
+figure3 <- figure3 %>% group_by(group, OA_domains, mains) %>%
+                       summarise(weight_sum = sum(weight), .groups = "drop") %>%
+                       group_by(group, OA_domains) %>%
+                       mutate(perc = weight_sum / sum(weight_sum) * 100)
+
+figure3 <- figure3 %>% mutate(mains_label = factor(mains, levels = c(0, 1), labels = c("Non-mainstream", "Mainstream")))
+figure3 <- figure3 %>% mutate(OA_domains = factor(OA_domains, levels = c("Social Sciences", "Physical Sciences", "Life Sciences", "Health Sciences")))
+figure3 <- figure3 %>% mutate(group = factor(group, levels = c("Overall", "Non-English", "Open Access")))
+
+ggplot(figure3, aes(x = perc, y = OA_domains, fill = mains_label)) +
+  geom_col(position = position_dodge(width = 0.6), width = 0.6) +
+  facet_wrap(~ group, ncol = 3, scales = "free_x") +
+  labs(x = "% of journals (fractional counting by field)", y = "Field", fill = "") +
+  scale_fill_manual(values = c("Mainstream" = "#D53E4F", "Non-mainstream" = "#66C2A5")) +
+  guides(fill = guide_legend(reverse = TRUE)) +
   theme_minimal() +
-  theme(legend.position = "none")
-ggsave("~/Desktop/OpenAlex_journals_dataset/figure3.png", width = 6.27, height = 3.14, dpi = 300)
-
+  theme(strip.text = element_text(size = 12, face = "bold"), axis.text.y = element_text(size = 7),
+        legend.position = "bottom", legend.direction = "horizontal", legend.key.size = unit(0.4, "cm"), legend.text = element_text(size = 7))
+ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig3.png", width = 6, height = 3, dpi = 300)
 
 ## FIGURE 4
-#locally_informed_res <- locally_informed_res %>% mutate(proportion = "refs")
-#locally_situated_res <- locally_situated_res %>% mutate(proportion = "tops")
-#locally_relevant_res <- locally_relevant_res %>% mutate(proportion = "cits/pubs")
-#all_journals <- ddff_megamerge %>% select(OA_source_ID, other_IDs, refs_prop, cits_prop, pubs_prop, tops_prop) %>%
-#                                   unnest(other_IDs) %>%
-#                                   mutate(group = "All journals")
+ddff_megamerge %>% group_by(mains) %>%
+                   summarise(total_unique_journals = n_distinct(OA_ID),
+                             local_unique_journals = n_distinct(OA_ID[local_territory == "local"]),
+                             .groups = "drop")
+# local mainstream journals / total mainstream journals = 7058/26891 = 0.26 baseline proportion
+# local non-mainstream journals / total non-mainstream journals = 12711/48809 = 0.26 baseline proportion
 
-# convert to long format and clean each dataframe before binding
-#locally_informed_res <- locally_informed_res %>% pivot_longer(cols = c(OA_source_ID, MJL_ID, JCR_ID, SCOP_ID, SJR_ID, CWTS_ID, DOAJ_ID), names_to = "source", values_to = "id") %>% mutate(present = !is.na(id))
-#locally_informed_res <- locally_informed_res %>% filter(present == TRUE)
-#locally_informed_res <- locally_informed_res %>% select(source, id, proportion, value = refs_prop, group)
-#locally_informed_res <- locally_informed_res %>% distinct()
+figure4 <- ddff_megamerge %>% mutate(OA_domains = strsplit(OA_domains, ";")) %>%
+                              unnest(OA_domains) %>%
+                              mutate(OA_domains = trimws(OA_domains)) %>%
+                              filter(!is.na(OA_domains) & OA_domains != "" & OA_domains != "NA") %>%
+                              mutate(is_OA = map_lgl(open_access, ~ {if (is.null(.x)) return(FALSE)
+                                .x$SCOP_open_access == "Unpaywall Open Access" |
+                                  .x$DOAJ_open_access == "Yes" |
+                                  .x$OA_open_access == TRUE}),
+                                is_non_english = langs == 0,
+                                is_overall = TRUE)
 
-#locally_situated_res <- locally_situated_res %>% pivot_longer(cols = c(OA_source_ID, MJL_ID, JCR_ID, SCOP_ID, SJR_ID, CWTS_ID, DOAJ_ID), names_to = "source", values_to = "id") %>% mutate(present = !is.na(id))
-#locally_situated_res <- locally_situated_res %>% filter(present == TRUE)
-#locally_situated_res <- locally_situated_res %>% select(source, id, proportion, value = tops_prop, group)
-#locally_situated_res <- locally_situated_res %>% distinct()
+figure4 <- figure4 %>% group_by(OA_ID) %>%
+                       mutate(n_fields = n_distinct(OA_domains), weight = 1 / n_fields) %>%
+                       ungroup()
 
-#locally_relevant_res <- locally_relevant_res %>% pivot_longer(cols = c(OA_source_ID, MJL_ID, JCR_ID, SCOP_ID, SJR_ID, CWTS_ID, DOAJ_ID), names_to = "source", values_to = "id") %>% mutate(present = !is.na(id))
-#locally_relevant_res <- locally_relevant_res %>% filter(present == TRUE)
-#locally_relevant_res <- locally_relevant_res %>% select(source, id, proportion, cits_prop, pubs_prop, group)
-#locally_relevant_res <- locally_relevant_res %>% pivot_longer(cols = c(cits_prop, pubs_prop), names_to = "type", values_to = "value")
-#locally_relevant_res <- locally_relevant_res %>% filter((type == "pubs_prop" & value >= 0.94) | (type == "cits_prop" & value == 1))
-#locally_relevant_res <- locally_relevant_res %>% distinct()
+figure4 <- figure4 %>% pivot_longer(cols = c(is_overall, is_non_english, is_OA),
+                                    names_to = "group",
+                                    values_to = "in_group") %>%
+                       filter(in_group) %>%
+                       group_by(group, mains, OA_domains) %>%
+                       summarise(total_weighted_journals = sum(weight, na.rm = TRUE),
+                                 local_weighted_journals = sum(weight * (local_territory == "local"), na.rm = TRUE),
+                                 prop = local_weighted_journals / total_weighted_journals,
+                                 .groups = "drop") %>%
+                       mutate(representation_index = prop - 0.26,
+                              group = recode(group, "is_overall" = "Overall", "is_non_english" = "Non-English", "is_OA" = "Open Access"))
 
-#all_journals <- all_journals %>% pivot_longer(cols = c(OA_source_ID, MJL_ID, JCR_ID, SCOP_ID, SJR_ID, CWTS_ID, DOAJ_ID), names_to = "source", values_to = "id") %>%
-#                                 mutate(present = !is.na(id)) %>%
-#                                 pivot_longer(cols = c(refs_prop, tops_prop, cits_prop, pubs_prop), names_to = "proportion", values_to = "value")
-#all_journals <- all_journals %>% filter(present == TRUE)
-#all_journals <- all_journals %>% mutate(proportion = case_when(proportion == "cits_prop" ~ "cits/pubs",
-#                                                               proportion == "pubs_prop" ~ "cits/pubs",
-#                                                               proportion == "refs_prop" ~ "refs",
-#                                                               proportion == "tops_prop" ~ "tops",
-#                                                               TRUE ~ proportion))
-#all_journals <- all_journals %>% distinct()
-#all_journals$source <- factor(all_journals$source, levels = c("OA_source_ID", "MJL_ID", "JCR_ID", "SCOP_ID", "SJR_ID", "CWTS_ID", "DOAJ_ID"))
-#all_journals$proportion <- factor(all_journals$proportion, levels = c("refs", "cits/pubs", "tops"))
+figure4 <- figure4 %>% mutate(representation_index = representation_index * 100)
+figure4 <- figure4 %>% mutate(mains_label = factor(mains, levels = c(0, 1), labels = c("Non-mainstream", "Mainstream")))
+figure4 <- figure4 %>% mutate(OA_domains = factor(OA_domains, levels = c("Social Sciences", "Physical Sciences", "Life Sciences", "Health Sciences")))
+figure4 <- figure4 %>% mutate(group = factor(group, levels = c("Overall", "Non-English", "Open Access")))
 
-# bind all data together
-#figure4 <- bind_rows(locally_informed_res %>% select(source, id, proportion, value, group),
-#                     locally_situated_res %>% select(source, id, proportion, value, group),
-#                     locally_relevant_res %>% select(source, id, proportion, value, group),
-#                     all_journals %>% select(source, id, proportion, value, group))
-#figure4$source <- factor(figure4$source, levels = c("OA_source_ID", "MJL_ID", "JCR_ID", "SCOP_ID", "SJR_ID", "CWTS_ID", "DOAJ_ID"))
-
-#ggplot(figure4, aes(x = value, y = source, fill = source, color = source)) +
-#  geom_density_ridges(alpha = 0.7, scale = 1) +
-#  facet_wrap(~ group) +
-#  labs(x = "Proportion", y = "Data Sources") +
-#  scale_y_discrete(labels = c("OA_source_ID" = "OpenAlex", "MJL_ID" = "MJL", "JCR_ID" = "JCR", "SCOP_ID" = "Scopus", "SJR_ID" = "SJR", "CWTS_ID" = "CWTS", "DOAJ_ID" = "DOAJ")) +
-#  theme_minimal() +
-#  theme(legend.position = "none")
-#ggsave("~/Desktop/OpenAlex_journals_dataset/figure4.png", width = 6.27, height = 3.14, dpi = 300)
-
-#ggplot(all_journals, aes(x = value, y = source, fill = source, color = source)) +
-#  geom_density_ridges(alpha = 0.7, scale = 1) +
-#  facet_wrap(~ proportion, labeller = as_labeller(c("refs" = "Locally Informed Research",
-#                                                    "cits/pubs" = "Locally Relevant Research",
-#                                                    "tops" = "Locally Situated Research"))) +
-#  labs(x = "Proportions", y = "Data Sources") +
-#  scale_y_discrete(labels = c("OA_source_ID" = "OpenAlex", "MJL_ID" = "MJL", "JCR_ID" = "JCR", "SCOP_ID" = "Scopus", "SJR_ID" = "SJR", "CWTS_ID" = "CWTS", "DOAJ_ID" = "DOAJ")) +
-#  theme_minimal() +
-#  theme(legend.position = "none")
-#ggsave("~/Desktop/OpenAlex_journals_dataset/figure4.png", width = 6.27, height = 3.14, dpi = 300)
-
+ggplot(figure4, aes(x = representation_index, y = OA_domains, fill = mains_label)) +
+  geom_col(position = position_dodge(width = 0.6), width = 0.6) +
+  facet_wrap(~ group, ncol = 3, scales = "free_x") +
+  labs(x = "% of journals under-/over-representation (fractional counting by field)", y = "Field", fill = "") +
+  scale_fill_manual(values = c("Mainstream" = "#D53E4F", "Non-mainstream" = "#66C2A5")) +
+  guides(fill = guide_legend(reverse = TRUE)) +
+  theme_minimal() +
+  theme(strip.text = element_text(size = 12, face = "bold"), axis.text.y = element_text(size = 7), legend.position = "bottom",
+    legend.direction = "horizontal", legend.key.size = unit(0.4, "cm"), legend.text = element_text(size = 7))
+ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig4.png", width = 6, height = 3, dpi = 300)
 
 ## FIGURE 5
-publications_2023 <- list.files(path = "~/Desktop/OpenAlex_journals_dataset/publications_local_variable", pattern = "^local_research_OA2410_publications_local_variable_\\d{12}$", full.names = TRUE)
-publications_2023 <- rbindlist(lapply(publications_2023, fread, sep = ","), fill = TRUE)
+openalex_articles_2023 <- list.files(path = "~/Desktop/OpenAlex_journals_dataset/publications_local_variable", pattern = "^local_research_OA2410_publications_local_variable_\\d{12}$", full.names = TRUE)
+openalex_articles_2023 <- rbindlist(lapply(openalex_articles_2023, fread, sep = ","), fill = TRUE)
 
 # count number of articles per country and journal
-publications_2023 <- publications_2023 %>% group_by(journal_id, journal_name, country) %>%
-                                           summarise(article_count = n(), .groups = "drop")
+openalex_articles_2023 <- openalex_articles_2023 %>% group_by(journal_id, journal_name, country) %>%
+                                                     summarise(article_count = n(), .groups = "drop")
+
+# correct country names to macth those in world dataframe
+openalex_articles_2023$country[openalex_articles_2023$country == "Bahamas"] <- "The Bahamas"
+openalex_articles_2023$country[openalex_articles_2023$country == "Congo Republic"] <- "Republic of the Congo"
+openalex_articles_2023$country[openalex_articles_2023$country == "Curacao"] <- "Curaçao"
+openalex_articles_2023$country[openalex_articles_2023$country == "DR Congo"] <- "Democratic Republic of the Congo"
+openalex_articles_2023$country[openalex_articles_2023$country == "Eswatini"] <- "eSwatini"
+openalex_articles_2023$country[openalex_articles_2023$country == "French Guiana"] <- "NA"
+openalex_articles_2023$country[openalex_articles_2023$country == "Gibraltar"] <- "NA"
+openalex_articles_2023$country[openalex_articles_2023$country == "Guadeloupe"] <- "NA"
+openalex_articles_2023$country[openalex_articles_2023$country == "Hong Kong"] <- "Hong Kong S.A.R."
+openalex_articles_2023$country[openalex_articles_2023$country == "Macao"] <- "Macao S.A.R"
+openalex_articles_2023$country[openalex_articles_2023$country == "Martinique"] <- "NA"
+openalex_articles_2023$country[openalex_articles_2023$country == "Micronesia"] <- "Federated States of Micronesia"
+openalex_articles_2023$country[openalex_articles_2023$country == "Palestinian Territory"] <- "Palestine"
+openalex_articles_2023$country[openalex_articles_2023$country == "Réunion"] <- "NA"
+openalex_articles_2023$country[openalex_articles_2023$country == "Sao Tome and Principe"] <- "São Tomé and Príncipe"
+openalex_articles_2023$country[openalex_articles_2023$country == "Serbia"] <- "Republic of Serbia"
+openalex_articles_2023$country[openalex_articles_2023$country == "St Kitts and Nevis"] <- "Saint Kitts and Nevis"
+openalex_articles_2023$country[openalex_articles_2023$country == "Svalbard and Jan Mayen"] <- "NA"
+openalex_articles_2023$country[openalex_articles_2023$country == "Tanzania"] <- "United Republic of Tanzania"
+openalex_articles_2023$country[openalex_articles_2023$country == "The Netherlands"] <- "Netherlands"
+openalex_articles_2023$country[openalex_articles_2023$country == "Timor-Leste"] <- "East Timor"
+openalex_articles_2023$country[openalex_articles_2023$country == "Türkiye"] <- "Turkey"
+openalex_articles_2023$country[openalex_articles_2023$country == "U.S. Virgin Islands"] <- "United States Virgin Islands"
+openalex_articles_2023$country[openalex_articles_2023$country == "United States"] <- "United States of America"
 
 # sum the number of articles per country to know their 2023 publications total within all OpenAlex journals
-publications_2023_all <- publications_2023 %>% group_by(country) %>%
-                                               summarise(article_total = n(), .groups = "drop")
+openalex_articles_2023_all <- openalex_articles_2023 %>% group_by(country) %>%
+                                                         summarise(article_total = n(), .groups = "drop")
 
-# sum the number of articles per country to know their 2023 publications total within locally informed research journals, and compute the proportion of articles in locally informed research journals with respect to all their 2023 publications
-publications_2023_inf <- publications_2023 %>% filter(journal_id %in% locally_informed_res$OA_source_ID) %>%
-                                               group_by(country) %>%
-                                               summarise(article_total = n(), .groups = "drop")
-publications_2023_inf <- publications_2023_inf %>% mutate(article_share = article_total / 
-                                                   publications_2023_all$article_total[match(country, publications_2023_all$country)])
-
-# sum the number of articles per country to know their 2023 publications total within locally relevant research journals, and compute the proportion of articles in locally relevant research journals with respect to all their 2023 publications
-publications_2023_rel <- publications_2023 %>% filter(journal_id %in% locally_relevant_res$OA_source_ID) %>%
-                                               group_by(country) %>%
-                                               summarise(article_total = n(), .groups = "drop")
-publications_2023_rel <- publications_2023_rel %>% mutate(article_share = article_total / 
-                                                            publications_2023_all$article_total[match(country, publications_2023_all$country)])
-
-# sum the number of articles per country to know their 2023 publications total within locally situated research journals, and compute the proportion of articles in locally situated research journals with respect to all their 2023 publications
-publications_2023_sit <- publications_2023 %>% filter(journal_id %in% locally_situated_res$OA_source_ID) %>%
-                                               group_by(country) %>%
-                                               summarise(article_total = n(), .groups = "drop")
-publications_2023_sit <- publications_2023_sit %>% mutate(article_share = article_total / 
-                                                            publications_2023_all$article_total[match(country, publications_2023_all$country)])
+# sum the number of articles per country to know their 2023 publications total within local journals, and compute the proportion of articles in local journals with respect to all their 2023 publications
+openalex_articles_2023_territory <- openalex_articles_2023 %>% filter(journal_id %in% local_journals_territory$OA_source_ID) %>%
+                                                               group_by(country) %>%
+                                                               summarise(article_total = n(), .groups = "drop")
+openalex_articles_2023_territory <- openalex_articles_2023_territory %>% mutate(article_share = article_total / openalex_articles_2023_all$article_total[match(country, openalex_articles_2023_all$country)])
 
 # load world shapefile
 world <- ne_countries(scale = "medium", returnclass = "sf")
 
-# correct country names to macth those in world dataframe
-publications_2023_sit$country[publications_2023_sit$country == "Bahamas"] <- "The Bahamas"
-publications_2023_sit$country[publications_2023_sit$country == "Congo Republic"] <- "Republic of the Congo"
-publications_2023_rel$country[publications_2023_rel$country == "Curacao"] <- "Curaçao"
-publications_2023_rel$country[publications_2023_rel$country == "DR Congo"] <- "Democratic Republic of the Congo"
-publications_2023_rel$country[publications_2023_rel$country == "Eswatini"] <- "eSwatini"
-publications_2023_rel$country[publications_2023_rel$country == "French Guiana"] <- "NA"
-publications_2023_sit$country[publications_2023_sit$country == "Gibraltar"] <- "NA"
-publications_2023_rel$country[publications_2023_rel$country == "Guadeloupe"] <- "NA"
-publications_2023_rel$country[publications_2023_rel$country == "Hong Kong"] <- "Hong Kong S.A.R."
-publications_2023_rel$country[publications_2023_rel$country == "Macao"] <- "Macao S.A.R"
-publications_2023_rel$country[publications_2023_rel$country == "Martinique"] <- "NA"
-publications_2023_sit$country[publications_2023_sit$country == "Micronesia"] <- "Federated States of Micronesia"
-publications_2023_rel$country[publications_2023_rel$country == "Palestinian Territory"] <- "Palestine"
-publications_2023_rel$country[publications_2023_rel$country == "Réunion"] <- "NA"
-publications_2023_rel$country[publications_2023_rel$country == "Sao Tome and Principe"] <- "São Tomé and Príncipe"
-publications_2023_rel$country[publications_2023_rel$country == "Serbia"] <- "Republic of Serbia"
-publications_2023_rel$country[publications_2023_rel$country == "St Kitts and Nevis"] <- "Saint Kitts and Nevis"
-publications_2023_sit$country[publications_2023_sit$country == "Svalbard and Jan Mayen"] <- "NA"
-publications_2023_rel$country[publications_2023_rel$country == "Tanzania"] <- "United Republic of Tanzania"
-publications_2023_rel$country[publications_2023_rel$country == "The Netherlands"] <- "Netherlands"
-publications_2023_rel$country[publications_2023_rel$country == "Timor-Leste"] <- "East Timor"
-publications_2023_rel$country[publications_2023_rel$country == "Türkiye"] <- "Turkey"
-publications_2023_rel$country[publications_2023_rel$country == "U.S. Virgin Islands"] <- "United States Virgin Islands"
-publications_2023_rel$country[publications_2023_rel$country == "United States"] <- "United States of America"
-
 # merge using full country names
-publications_2023_rel_map <- world %>% left_join(publications_2023_rel, by = c("admin" = "country"))
+openalex_articles_2023_territory_map <- world %>% left_join(openalex_articles_2023_territory, by = c("admin" = "country"))
 
-# plot all maps
-ggplot(publications_2023_rel_map) +
-  geom_sf(aes(fill = article_share), color = "gray90", size = 0.1) +
-  scale_fill_gradient(low = "#e0f7ff", high = "#005f85", na.value = "grey80",
-                      name = "Share of Articles") +
+# plot map
+ggplot(openalex_articles_2023_territory_map) +
+  geom_sf(aes(fill = article_share), color = "grey", size = 0.1) +
+  scale_fill_gradient(low = "#E6F598", high = "#3288BD", na.value = "grey80",
+                      name = "Share of articles") +
   labs(x = NULL, y = NULL) +
   theme_minimal() +
-  theme(legend.position = "right",
+  theme(legend.position = "bottom",
         legend.title = element_text(size = 10),
         legend.text = element_text(size = 9),
         panel.grid = element_blank(),
@@ -1055,9 +1101,9 @@ ggplot(publications_2023_rel_map) +
         axis.ticks = element_blank(),
         panel.background = element_rect(fill = "white", color = NA),
         plot.background = element_rect(fill = "white", color = NA))
-ggsave("~/Desktop/OpenAlex_journals_dataset/figure5_rel_map.png", width = 12, height = 6, dpi = 600)
+ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig5.png", width = 12, height = 6, dpi = 600)
 
-# create pie charts data to show on top of the map
+# create pie charts data to show on top of the map EN CASO DE QUE QUERAMOS AGREGAR LOS PIECHARTS ENCIMA
 publications_2023_rel_main <- publications_2023 %>% filter(journal_id %in% (locally_relevant_res %>%
                                                                             filter(!is.na(MJL_ID) | !is.na(JCR_ID) | !is.na(SCOP_ID) | !is.na(SJR_ID) | !is.na(CWTS_ID)) %>%
                                                                             pull(OA_source_ID))) %>%
@@ -1074,4 +1120,18 @@ ggplot(publications_2023_rel_pie, aes(x = "", y = Value, fill = Indexing)) +
   theme(legend.position = "right")
 ggsave("~/Desktop/OpenAlex_journals_dataset/figure5_rel_Mexico.png", width = 6.27, height = 3.14, dpi = 300)
 
+
+### PRODUCERS RESULTS
+local_journals_producers <- ddff_megamerge %>% filter(local_producers == "local")
+
+## FIGURE...
+
+
+
+
+
+### RECIPIENTS RESULTS
+local_journals_recipients <- ddff_megamerge %>% filter(local_recipients == "local")
+
+## FIGURE...
 
