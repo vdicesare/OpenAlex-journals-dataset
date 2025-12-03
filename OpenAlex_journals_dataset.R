@@ -818,12 +818,11 @@ SJR_DOAJ_intersection <- 6721 + 727
 # CWTS intersections
 CWTS_DOAJ_intersection <- 6691 + 715
 
-
 # final drawing of the Venn diagrams
-p <- draw_2set_venn(set1_size = OA_size,
-                    set2_size = DOAJ_size,
-                    intersection_size = OA_DOAJ_intersection)
-ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig2_OA_DOAJ.png", p, width = 6, height = 6, dpi = 300)
+figure2 <- draw_2set_venn(set1_size = OA_size,
+                          set2_size = DOAJ_size,
+                          intersection_size = OA_DOAJ_intersection)
+ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig2_OA_DOAJ.png", figure2, width = 6, height = 6, dpi = 300)
 
 
 ## TABLE 1
@@ -966,11 +965,58 @@ ddff_megamerge %>% mutate(MJL_ID = map_chr(other_IDs, ~ .x$MJL_ID %||% NA_charac
                     print(n = Inf)
 
 
+## FIGURE 3
+figure3 <- ddff_megamerge %>% select(OA_ID, OA_domains, mains, local_territory, local_producers, local_recipients) %>%
+                              distinct()
+
+figure3 <- figure3 %>% mutate(OA_domains = strsplit(OA_domains, ";\\s*")) %>% 
+                       unnest(OA_domains) %>%
+                       filter(!is.na(OA_domains) & OA_domains != "", OA_domains != "NA")
+
+figure3 <- figure3 %>% pivot_longer(cols = c(local_territory, local_producers, local_recipients),
+                                    names_to = "conceptualization",
+                                    values_to = "is_local") %>%
+                       mutate(is_local = is_local == "local") %>%
+                       group_by(conceptualization, OA_domains, mains) %>%
+                       summarise(total_journals = n_distinct(OA_ID),
+                                 local_journals = sum(is_local, na.rm = TRUE),
+                                 prop_local = local_journals / total_journals,
+                                 .groups = "drop")
+
+figure3 <- figure3 %>% mutate(OA_domains = factor(OA_domains, levels = c("Social Sciences", "Physical Sciences", "Life Sciences", "Health Sciences")))
+figure3 <- figure3 %>% mutate(conceptualization = case_when(conceptualization == "local_territory" ~ "Territory",
+                                                            conceptualization == "local_producers" ~ "Producers",
+                                                            conceptualization == "local_recipients" ~ "Recipients"),
+                              conceptualization = factor(conceptualization, levels = c("Territory", "Producers", "Recipients")))
+figure3 <- figure3 %>% mutate(mains = case_when(mains == 1 ~ "Mainstream",
+                                                mains == 0 ~ "Non-mainstream"),
+                              mains = factor(mains, levels = c("Mainstream", "Non-mainstream")))
+
+ggplot(figure3, aes(x = mains, y = OA_domains, fill = prop_local)) +
+  geom_tile(color = "grey") +
+  scale_fill_gradientn(colors = c("#FEE08B", "#FDAE61", "#F46D43")) +
+  facet_grid(. ~ conceptualization, scales = "free_x", space = "free") +
+  labs(x = "Indexing condition", y = "Field", fill = "Share of local journals") +
+  theme_minimal() +
+  theme(strip.text = element_text(size = 12, face = "bold"),
+        axis.text.x = element_text(size = 7, hjust = 0.5),
+        axis.text.y = element_text(size = 9),
+        legend.position = "bottom",
+        legend.title = element_text(size = 7),
+        legend.text = element_text(size = 7),
+        legend.key.width = unit(0.7, "cm"),
+        panel.grid = element_blank())
+ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig3.png", width = 6, height = 3, dpi = 300)
+
+
 ### TERRITORY RESULTS
 local_journals_territory <- ddff_megamerge %>% filter(local_territory == "local")
+local_journals_producers <- ddff_megamerge %>% filter(local_producers == "local")
+local_journals_recipients <- ddff_megamerge %>% filter(local_recipients == "local")
 
-## FIGURE 3
-figure3 <- local_journals_territory %>% mutate(OA_domains = strsplit(OA_domains, ";")) %>%
+
+## FIGURE 4
+figure4 <- local_journals_territory %>% mutate(OA_domains = strsplit(OA_domains, ";")) %>%
                                         unnest(OA_domains) %>%
                                         mutate(OA_domains = trimws(OA_domains)) %>%
                                         filter(!is.na(OA_domains) & OA_domains != "") %>%
@@ -981,28 +1027,28 @@ figure3 <- local_journals_territory %>% mutate(OA_domains = strsplit(OA_domains,
                                           is_non_english = langs == 0,
                                           is_overall = TRUE)
 
-figure3 <- figure3 %>% group_by(OA_ID) %>%
+figure4 <- figure4 %>% group_by(OA_ID) %>%
                        mutate(n_fields = n_distinct(OA_domains), weight = 1 / n_fields) %>%
                        ungroup()
 
-figure3 <- figure3 %>% select(OA_ID, OA_domains, mains, weight, is_OA, is_non_english, is_overall) %>%
+figure4 <- figure4 %>% select(OA_ID, OA_domains, mains, weight, is_OA, is_non_english, is_overall) %>%
                        distinct() %>%
                        pivot_longer(cols = c(is_OA, is_non_english, is_overall), names_to = "group", values_to = "value") %>%
                        filter(value == TRUE) %>%
                        mutate(group = recode(group, "is_OA" = "Open Access", "is_non_english" = "Non-English", "is_overall" = "Overall"))
 
-figure3 <- figure3 %>% filter(!OA_ID %in% c("OA18498", "OA38322", "OA39390"))
+figure4 <- figure4 %>% filter(!OA_ID %in% c("OA18498", "OA38322", "OA39390"))
 
-figure3 <- figure3 %>% group_by(group, OA_domains, mains) %>%
+figure4 <- figure4 %>% group_by(group, OA_domains, mains) %>%
                        summarise(weight_sum = sum(weight), .groups = "drop") %>%
                        group_by(group, OA_domains) %>%
                        mutate(perc = weight_sum / sum(weight_sum) * 100)
 
-figure3 <- figure3 %>% mutate(mains_label = factor(mains, levels = c(0, 1), labels = c("Non-mainstream", "Mainstream")))
-figure3 <- figure3 %>% mutate(OA_domains = factor(OA_domains, levels = c("Social Sciences", "Physical Sciences", "Life Sciences", "Health Sciences")))
-figure3 <- figure3 %>% mutate(group = factor(group, levels = c("Overall", "Non-English", "Open Access")))
+figure4 <- figure4 %>% mutate(mains_label = factor(mains, levels = c(0, 1), labels = c("Non-mainstream", "Mainstream")))
+figure4 <- figure4 %>% mutate(OA_domains = factor(OA_domains, levels = c("Social Sciences", "Physical Sciences", "Life Sciences", "Health Sciences")))
+figure4 <- figure4 %>% mutate(group = factor(group, levels = c("Overall", "Non-English", "Open Access")))
 
-ggplot(figure3, aes(x = perc, y = OA_domains, fill = mains_label)) +
+ggplot(figure4, aes(x = perc, y = OA_domains, fill = mains_label)) +
   geom_col(position = position_dodge(width = 0.6), width = 0.6) +
   facet_wrap(~ group, ncol = 3, scales = "free_x") +
   labs(x = "% of journals (fractional counting by field)", y = "Field", fill = "") +
@@ -1011,9 +1057,7 @@ ggplot(figure3, aes(x = perc, y = OA_domains, fill = mains_label)) +
   theme_minimal() +
   theme(strip.text = element_text(size = 12, face = "bold"), axis.text.y = element_text(size = 7),
         legend.position = "bottom", legend.direction = "horizontal", legend.key.size = unit(0.4, "cm"), legend.text = element_text(size = 7))
-ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig3.png", width = 6, height = 3, dpi = 300)
-
-## FIGURE 4
+ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig4.png", width = 6, height = 3, dpi = 300)
 
 
 ## FIGURE 5
@@ -1102,8 +1146,6 @@ ggsave("~/Desktop/OpenAlex_journals_dataset/figure5_rel_Mexico.png", width = 6.2
 
 
 ### PRODUCERS RESULTS
-local_journals_producers <- ddff_megamerge %>% filter(local_producers == "local")
-
 ## FIGURE...
 
 
@@ -1111,7 +1153,5 @@ local_journals_producers <- ddff_megamerge %>% filter(local_producers == "local"
 
 
 ### RECIPIENTS RESULTS
-local_journals_recipients <- ddff_megamerge %>% filter(local_recipients == "local")
-
 ## FIGURE...
 
