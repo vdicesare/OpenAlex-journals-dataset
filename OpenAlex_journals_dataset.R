@@ -769,33 +769,61 @@ draw_2set_venn <- function(set1_size, set2_size, intersection_size) {
                                         r = c(r1, r2),
                                         set = factor(c("Set 1", "Set 2")))
                   p <- ggplot(circles) +
-                    geom_circle(aes(x0 = x, y0 = y, r = r, fill = set), alpha = 0.7, color = "grey") +
+                    geom_circle(aes(x0 = x, y0 = y, r = r, fill = set), alpha = 0.7, color = "grey20") +
                     coord_fixed() +
                     theme_minimal() +
-                    scale_fill_manual(values = c("Set 1" = my_colors[["OpenAlex"]], "Set 2" = my_colors[["MJL"]])) +
+                    scale_fill_manual(values = c("Set 1" = my_colors[["OpenAlex"]], "Set 2" = my_colors[["DOAJ"]])) +
                     theme(legend.position = "none", axis.text = element_blank(), axis.title = element_blank(), axis.ticks = element_blank())
                   return(p)}
 
-# sets and intersections
+# set sizes
 OA_size <- 75694
 MJL_size <- 22455
-OA_MJL_intersection <- 20419
 JCR_size <- 21988
-OA_JCR_intersection <- 20038
 SCOP_size <- 29221
-OA_SCOP_intersection <- 24997
 SJR_size <- 28174
-OA_SJR_intersection <- 23963
 CWTS_size <- 27879
-OA_CWTS_intersection <- 23759
 DOAJ_size <- 20955
+
+# OA intersections
+OA_MJL_intersection <- 20419
+OA_JCR_intersection <- 20038
+OA_SCOP_intersection <- 24997
+OA_SJR_intersection <- 23963
+OA_CWTS_intersection <- 23759
 OA_DOAJ_intersection <- 16242
 
-# final drawing of the Venn diagram
+# MJL intersections
+MJL_JCR_intersection <- 19983 + 1208
+MJL_SCOP_intersection <- 18553 + 1286
+MJL_SJR_intersection <- 18302 + 1231
+MJL_CWTS_intersection <- 18151 + 1194
+MJL_DOAJ_intersection <- 5695 + 269
+  
+# JCR intersections
+JCR_SCOP_intersection <- 18241 + 1231
+JCR_SJR_intersection <- 18080 + 1198
+JCR_CWTS_intersection <- 17933 + 1164
+JCR_DOAJ_intersection <- 5469 + 259
+  
+# Scopus intersections
+SCOP_SJR_intersection <- 23762 + 3756
+SCOP_CWTS_intersection <- 23442 + 3609
+SCOP_DOAJ_intersection <- 7395 + 835
+  
+# SJR intersections
+SJR_CWTS_intersection <- 23638 + 3608
+SJR_DOAJ_intersection <- 6721 + 727
+  
+# CWTS intersections
+CWTS_DOAJ_intersection <- 6691 + 715
+
+
+# final drawing of the Venn diagrams
 p <- draw_2set_venn(set1_size = OA_size,
-                    set2_size = MJL_size,
-                    intersection_size = OA_MJL_intersection)
-ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig2_OA_MJL.png", p, width = 6, height = 6, dpi = 300)
+                    set2_size = DOAJ_size,
+                    intersection_size = OA_DOAJ_intersection)
+ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig2_OA_DOAJ.png", p, width = 6, height = 6, dpi = 300)
 
 
 ## TABLE 1
@@ -986,55 +1014,7 @@ ggplot(figure3, aes(x = perc, y = OA_domains, fill = mains_label)) +
 ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig3.png", width = 6, height = 3, dpi = 300)
 
 ## FIGURE 4
-ddff_megamerge %>% group_by(mains) %>%
-                   summarise(total_unique_journals = n_distinct(OA_ID),
-                             local_unique_journals = n_distinct(OA_ID[local_territory == "local"]),
-                             .groups = "drop")
-# local mainstream journals / total mainstream journals = 7058/26891 = 0.26 baseline proportion
-# local non-mainstream journals / total non-mainstream journals = 12711/48809 = 0.26 baseline proportion
 
-figure4 <- ddff_megamerge %>% mutate(OA_domains = strsplit(OA_domains, ";")) %>%
-                              unnest(OA_domains) %>%
-                              mutate(OA_domains = trimws(OA_domains)) %>%
-                              filter(!is.na(OA_domains) & OA_domains != "" & OA_domains != "NA") %>%
-                              mutate(is_OA = map_lgl(open_access, ~ {if (is.null(.x)) return(FALSE)
-                                .x$SCOP_open_access == "Unpaywall Open Access" |
-                                  .x$DOAJ_open_access == "Yes" |
-                                  .x$OA_open_access == TRUE}),
-                                is_non_english = langs == 0,
-                                is_overall = TRUE)
-
-figure4 <- figure4 %>% group_by(OA_ID) %>%
-                       mutate(n_fields = n_distinct(OA_domains), weight = 1 / n_fields) %>%
-                       ungroup()
-
-figure4 <- figure4 %>% pivot_longer(cols = c(is_overall, is_non_english, is_OA),
-                                    names_to = "group",
-                                    values_to = "in_group") %>%
-                       filter(in_group) %>%
-                       group_by(group, mains, OA_domains) %>%
-                       summarise(total_weighted_journals = sum(weight, na.rm = TRUE),
-                                 local_weighted_journals = sum(weight * (local_territory == "local"), na.rm = TRUE),
-                                 prop = local_weighted_journals / total_weighted_journals,
-                                 .groups = "drop") %>%
-                       mutate(representation_index = prop - 0.26,
-                              group = recode(group, "is_overall" = "Overall", "is_non_english" = "Non-English", "is_OA" = "Open Access"))
-
-figure4 <- figure4 %>% mutate(representation_index = representation_index * 100)
-figure4 <- figure4 %>% mutate(mains_label = factor(mains, levels = c(0, 1), labels = c("Non-mainstream", "Mainstream")))
-figure4 <- figure4 %>% mutate(OA_domains = factor(OA_domains, levels = c("Social Sciences", "Physical Sciences", "Life Sciences", "Health Sciences")))
-figure4 <- figure4 %>% mutate(group = factor(group, levels = c("Overall", "Non-English", "Open Access")))
-
-ggplot(figure4, aes(x = representation_index, y = OA_domains, fill = mains_label)) +
-  geom_col(position = position_dodge(width = 0.6), width = 0.6) +
-  facet_wrap(~ group, ncol = 3, scales = "free_x") +
-  labs(x = "% of journals under-/over-representation (fractional counting by field)", y = "Field", fill = "") +
-  scale_fill_manual(values = c("Mainstream" = "#D53E4F", "Non-mainstream" = "#66C2A5")) +
-  guides(fill = guide_legend(reverse = TRUE)) +
-  theme_minimal() +
-  theme(strip.text = element_text(size = 12, face = "bold"), axis.text.y = element_text(size = 7), legend.position = "bottom",
-    legend.direction = "horizontal", legend.key.size = unit(0.4, "cm"), legend.text = element_text(size = 7))
-ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig4.png", width = 6, height = 3, dpi = 300)
 
 ## FIGURE 5
 openalex_articles_2023 <- list.files(path = "~/Desktop/OpenAlex_journals_dataset/publications_local_variable", pattern = "^local_research_OA2410_publications_local_variable_\\d{12}$", full.names = TRUE)
