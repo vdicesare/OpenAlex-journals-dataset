@@ -1155,6 +1155,48 @@ ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig5B.png", width = 12, heig
 ### PRODUCERS RESULTS
 local_journals_producers <- ddff_megamerge %>% filter(local_producers == "local")
 
+## FIGURE 6
+figure6 <- local_journals_producers %>% mutate(OA_domains = strsplit(OA_domains, ";")) %>%
+                                        unnest(OA_domains) %>%
+                                        mutate(OA_domains = trimws(OA_domains)) %>%
+                                        filter(!is.na(OA_domains) & OA_domains != "") %>%
+                                        mutate(is_OA = map_lgl(open_access, ~ {if (is.null(.x)) return(FALSE)
+                                          .x$SCOP_open_access == "Unpaywall Open Access" |
+                                            .x$DOAJ_open_access == "Yes" |
+                                            .x$OA_open_access == TRUE}),
+                                          is_non_english = langs == 0,
+                                          is_overall = TRUE)
+
+figure6 <- figure6 %>% select(OA_ID, OA_domains, mains, is_OA, is_non_english, is_overall) %>%
+                       distinct() %>%
+                       pivot_longer(cols = c(is_OA, is_non_english, is_overall), names_to = "group", values_to = "value") %>%
+                       filter(value == TRUE) %>%
+                       mutate(group = recode(group, "is_OA" = "Open Access", "is_non_english" = "Non-English", "is_overall" = "Overall"))
+
+figure6 <- figure6 %>% filter(!is.na(OA_domains) & OA_domains != "" & OA_domains != "NA")
+
+figure6 <- figure6 %>% group_by(group, OA_domains, mains) %>%
+                       summarise(n = n(), .groups = "drop") %>%
+                       group_by(group, OA_domains) %>%
+                       mutate(perc = n / sum(n) * 100)
+
+figure6 <- figure6 %>% mutate(mains_label = factor(mains, levels = c(0, 1), labels = c("Non-mainstream", "Mainstream")))
+figure6 <- figure6 %>% mutate(OA_domains = factor(OA_domains, levels = c("Social Sciences", "Physical Sciences", "Life Sciences", "Health Sciences")))
+figure6 <- figure6 %>% mutate(group = factor(group, levels = c("Overall", "Non-English", "Open Access")))
+
+ggplot(figure6, aes(x = perc, y = OA_domains, fill = mains_label)) +
+  geom_col(position = position_dodge(width = 0.6), width = 0.6) +
+  facet_wrap(~ group, ncol = 3) +
+  coord_cartesian(xlim = c(0, 95)) +
+  labs(x = "% of local journals", y = "Field", fill = "Indexing status") +
+  scale_fill_manual(values = c("Mainstream" = "#D53E4F", "Non-mainstream" = "#66C2A5")) +
+  guides(fill = guide_legend(reverse = TRUE)) +
+  theme_minimal() +
+  theme(strip.text = element_text(size = 12, face = "bold"), axis.text.y = element_text(size = 7),
+        legend.position = "bottom", legend.direction = "horizontal", legend.key.size = unit(0.4, "cm"), legend.text = element_text(size = 7))
+ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig6.png", width = 6, height = 3, dpi = 300)
+
+
 ## FIGURE 7A
 # sum the number of articles per country to know their 2023 publications total within local journals, and compute the proportion of articles in local journals with respect to all their 2023 publications
 figure7A <- openalex_articles_2023 %>% filter(journal_id %in% local_journals_producers$OA_source_ID) %>%
@@ -1215,6 +1257,48 @@ ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig7B.png", width = 12, heig
 
 ### RECIPIENTS RESULTS
 local_journals_recipients <- ddff_megamerge %>% filter(local_recipients == "local")
+
+## FIGURE 8
+figure8 <- local_journals_recipients %>% mutate(OA_domains = strsplit(OA_domains, ";")) %>%
+                                         unnest(OA_domains) %>%
+                                         mutate(OA_domains = trimws(OA_domains)) %>%
+                                         filter(!is.na(OA_domains) & OA_domains != "") %>%
+                                         mutate(is_OA = map_lgl(open_access, ~ {if (is.null(.x)) return(FALSE)
+                                           .x$SCOP_open_access == "Unpaywall Open Access" |
+                                             .x$DOAJ_open_access == "Yes" |
+                                             .x$OA_open_access == TRUE}),
+                                           is_non_english = langs == 0,
+                                           is_overall = TRUE)
+
+figure8 <- figure8 %>% select(OA_ID, OA_domains, mains, is_OA, is_non_english, is_overall) %>%
+                       distinct() %>%
+                       pivot_longer(cols = c(is_OA, is_non_english, is_overall), names_to = "group", values_to = "value") %>%
+                       filter(value == TRUE) %>%
+                       mutate(group = recode(group, "is_OA" = "Open Access", "is_non_english" = "Non-English", "is_overall" = "Overall"))
+
+figure8 <- figure8 %>% filter(!is.na(OA_domains) & OA_domains != "" & OA_domains != "NA")
+
+figure8 <- figure8 %>% group_by(group, OA_domains, mains) %>%
+                       summarise(n = n(), .groups = "drop") %>%
+                       group_by(group, OA_domains) %>%
+                       mutate(perc = n / sum(n) * 100)
+
+figure8 <- figure8 %>% mutate(mains_label = factor(mains, levels = c(0, 1), labels = c("Non-mainstream", "Mainstream")))
+figure8 <- figure8 %>% mutate(OA_domains = factor(OA_domains, levels = c("Social Sciences", "Physical Sciences", "Life Sciences", "Health Sciences")))
+figure8 <- figure8 %>% mutate(group = factor(group, levels = c("Overall", "Non-English", "Open Access")))
+
+ggplot(figure8, aes(x = perc, y = OA_domains, fill = mains_label)) +
+  geom_col(position = position_dodge(width = 0.6), width = 0.6) +
+  facet_wrap(~ group, ncol = 3) +
+  coord_cartesian(xlim = c(0, 95)) +
+  labs(x = "% of local journals", y = "Field", fill = "Indexing status") +
+  scale_fill_manual(values = c("Mainstream" = "#D53E4F", "Non-mainstream" = "#66C2A5")) +
+  guides(fill = guide_legend(reverse = TRUE)) +
+  theme_minimal() +
+  theme(strip.text = element_text(size = 12, face = "bold"), axis.text.y = element_text(size = 7),
+        legend.position = "bottom", legend.direction = "horizontal", legend.key.size = unit(0.4, "cm"), legend.text = element_text(size = 7))
+ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig8.png", width = 6, height = 3, dpi = 300)
+
 
 ## FIGURE 9A
 # sum the number of articles per country to know their 2023 publications total within local journals, and compute the proportion of articles in local journals with respect to all their 2023 publications
