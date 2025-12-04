@@ -1152,6 +1152,35 @@ ggplot(figure5B) +
 ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig5B.png", width = 12, height = 6, dpi = 600)
 
 
+## FIGURE 5C
+# sum the number of articles per country to know their 2023 publications total within non-mainstream local journals, and compute the proportion of articles in non-mainstream local journals with respect to all their 2023 publications
+figure5C <- openalex_articles_2023 %>% filter(journal_id %in% local_journals_territory$OA_source_ID[local_journals_territory$mains == 0]) %>%
+                                       group_by(country) %>%
+                                       summarise(article_total = n(), .groups = "drop")
+figure5C <- figure5C %>% mutate(article_percent = 100 * article_total / openalex_articles_2023_all$article_total[match(country, openalex_articles_2023_all$country)])
+
+# merge using full country names
+figure5C <- world %>% left_join(figure5C, by = c("admin" = "country"))
+
+# plot map
+ggplot(figure5C) +
+  geom_sf(aes(fill = article_percent), color = "grey", size = 0.1) +
+  scale_fill_gradient(low = "#FEE08B", high = "#F46D43", na.value = "grey80", limits = c(0, 86),
+                      name = "% of articles in non-mainstream local journals") +
+  labs(x = NULL, y = NULL) +
+  theme_minimal() +
+  theme(legend.position = "bottom",
+        legend.title = element_text(size = 12),
+        legend.text = element_text(size = 12),
+        legend.key.width = unit(1.4, "cm"),
+        panel.grid = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        panel.background = element_rect(fill = "white", color = NA),
+        plot.background = element_rect(fill = "white", color = NA))
+ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig5C.png", width = 12, height = 6, dpi = 600)
+
+
 ### PRODUCERS RESULTS
 local_journals_producers <- ddff_megamerge %>% filter(local_producers == "local")
 
