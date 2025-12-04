@@ -1107,7 +1107,7 @@ figure5A <- world %>% left_join(figure5A, by = c("admin" = "country"))
 # plot map
 ggplot(figure5A) +
   geom_sf(aes(fill = article_percent), color = "grey", size = 0.1) +
-  scale_fill_gradient(low = "#E6F598", high = "#3288BD", na.value = "grey80",
+  scale_fill_gradient(low = "#E6F598", high = "#3288BD", na.value = "grey80", limits = c(0, 86),
                       name = "% of articles in local journals") +
   labs(x = NULL, y = NULL) +
   theme_minimal() +
@@ -1124,19 +1124,51 @@ ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig5A.png", width = 12, heig
 
 
 ## FIGURE 5B
-# sum the number of articles per country to know their 2023 publications total within local journals, and compute the proportion of articles in local journals with respect to all their 2023 publications
-figure5A <- openalex_articles_2023 %>% filter(journal_id %in% local_journals_territory$OA_source_ID) %>%
-  group_by(country) %>%
-  summarise(article_total = n(), .groups = "drop")
-figure5A <- figure5A %>% mutate(article_percent = 100 * article_total / openalex_articles_2023_all$article_total[match(country, openalex_articles_2023_all$country)])
+# sum the number of articles per country to know their 2023 publications total within mainstream local journals, and compute the proportion of articles in mainstream local journals with respect to all their 2023 publications
+figure5B <- openalex_articles_2023 %>% filter(journal_id %in% local_journals_territory$OA_source_ID[local_journals_territory$mains == 1]) %>%
+                                       group_by(country) %>%
+                                       summarise(article_total = n(), .groups = "drop")
+figure5B <- figure5B %>% mutate(article_percent = 100 * article_total / openalex_articles_2023_all$article_total[match(country, openalex_articles_2023_all$country)])
 
 # merge using full country names
-figure5A <- world %>% left_join(figure5A, by = c("admin" = "country"))
+figure5B <- world %>% left_join(figure5B, by = c("admin" = "country"))
 
 # plot map
-ggplot(figure5A) +
+ggplot(figure5B) +
   geom_sf(aes(fill = article_percent), color = "grey", size = 0.1) +
-  scale_fill_gradient(low = "#E6F598", high = "#3288BD", na.value = "grey80",
+  scale_fill_gradient(low = "#FEE08B", high = "#F46D43", na.value = "grey80", limits = c(0, 86),
+                      name = "% of articles in mainstream local journals") +
+  labs(x = NULL, y = NULL) +
+  theme_minimal() +
+  theme(legend.position = "bottom",
+        legend.title = element_text(size = 12),
+        legend.text = element_text(size = 12),
+        legend.key.width = unit(1.4, "cm"),
+        panel.grid = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        panel.background = element_rect(fill = "white", color = NA),
+        plot.background = element_rect(fill = "white", color = NA))
+ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig5B.png", width = 12, height = 6, dpi = 600)
+
+
+### PRODUCERS RESULTS
+local_journals_producers <- ddff_megamerge %>% filter(local_producers == "local")
+
+## FIGURE 7A
+# sum the number of articles per country to know their 2023 publications total within local journals, and compute the proportion of articles in local journals with respect to all their 2023 publications
+figure7A <- openalex_articles_2023 %>% filter(journal_id %in% local_journals_producers$OA_source_ID) %>%
+                                       group_by(country) %>%
+                                       summarise(article_total = n(), .groups = "drop")
+figure7A <- figure7A %>% mutate(article_percent = 100 * article_total / openalex_articles_2023_all$article_total[match(country, openalex_articles_2023_all$country)])
+
+# merge using full country names
+figure7A <- world %>% left_join(figure7A, by = c("admin" = "country"))
+
+# plot map
+ggplot(figure7A) +
+  geom_sf(aes(fill = article_percent), color = "grey", size = 0.1) +
+  scale_fill_gradient(low = "#E6F598", high = "#3288BD", na.value = "grey80", limits = c(0, 45),
                       name = "% of articles in local journals") +
   labs(x = NULL, y = NULL) +
   theme_minimal() +
@@ -1149,22 +1181,95 @@ ggplot(figure5A) +
         axis.ticks = element_blank(),
         panel.background = element_rect(fill = "white", color = NA),
         plot.background = element_rect(fill = "white", color = NA))
-ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig5A.png", width = 12, height = 6, dpi = 600)
+ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig7A.png", width = 12, height = 6, dpi = 600)
 
 
+## FIGURE 7B
+# sum the number of articles per country to know their 2023 publications total within mainstream local journals, and compute the proportion of articles in mainstream local journals with respect to all their 2023 publications
+figure7B <- openalex_articles_2023 %>% filter(journal_id %in% local_journals_producers$OA_source_ID[local_journals_producers$mains == 1]) %>%
+                                       group_by(country) %>%
+                                       summarise(article_total = n(), .groups = "drop")
+figure7B <- figure7B %>% mutate(article_percent = 100 * article_total / openalex_articles_2023_all$article_total[match(country, openalex_articles_2023_all$country)])
 
+# merge using full country names
+figure7B <- world %>% left_join(figure7B, by = c("admin" = "country"))
 
-### PRODUCERS RESULTS
-local_journals_producers <- ddff_megamerge %>% filter(local_producers == "local")
-
-## FIGURE...
-
-
-
+# plot map
+ggplot(figure7B) +
+  geom_sf(aes(fill = article_percent), color = "grey", size = 0.1) +
+  scale_fill_gradient(low = "#FEE08B", high = "#F46D43", na.value = "grey80", limits = c(0, 45),
+                      name = "% of articles in mainstream local journals") +
+  labs(x = NULL, y = NULL) +
+  theme_minimal() +
+  theme(legend.position = "bottom",
+        legend.title = element_text(size = 12),
+        legend.text = element_text(size = 12),
+        legend.key.width = unit(1.4, "cm"),
+        panel.grid = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        panel.background = element_rect(fill = "white", color = NA),
+        plot.background = element_rect(fill = "white", color = NA))
+ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig7B.png", width = 12, height = 6, dpi = 600)
 
 
 ### RECIPIENTS RESULTS
 local_journals_recipients <- ddff_megamerge %>% filter(local_recipients == "local")
 
-## FIGURE...
+## FIGURE 9A
+# sum the number of articles per country to know their 2023 publications total within local journals, and compute the proportion of articles in local journals with respect to all their 2023 publications
+figure9A <- openalex_articles_2023 %>% filter(journal_id %in% local_journals_recipients$OA_source_ID) %>%
+                                       group_by(country) %>%
+                                       summarise(article_total = n(), .groups = "drop")
+figure9A <- figure9A %>% mutate(article_percent = 100 * article_total / openalex_articles_2023_all$article_total[match(country, openalex_articles_2023_all$country)])
+
+# merge using full country names
+figure9A <- world %>% left_join(figure9A, by = c("admin" = "country"))
+
+# plot map
+ggplot(figure9A) +
+  geom_sf(aes(fill = article_percent), color = "grey", size = 0.1) +
+  scale_fill_gradient(low = "#E6F598", high = "#3288BD", na.value = "grey80", limits = c(0, 35),
+                      name = "% of articles in local journals") +
+  labs(x = NULL, y = NULL) +
+  theme_minimal() +
+  theme(legend.position = "bottom",
+        legend.title = element_text(size = 12),
+        legend.text = element_text(size = 12),
+        legend.key.width = unit(1.4, "cm"),
+        panel.grid = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        panel.background = element_rect(fill = "white", color = NA),
+        plot.background = element_rect(fill = "white", color = NA))
+ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig9A.png", width = 12, height = 6, dpi = 600)
+
+
+## FIGURE 9B
+# sum the number of articles per country to know their 2023 publications total within mainstream local journals, and compute the proportion of articles in mainstream local journals with respect to all their 2023 publications
+figure9B <- openalex_articles_2023 %>% filter(journal_id %in% local_journals_recipients$OA_source_ID[local_journals_recipients$mains == 1]) %>%
+                                       group_by(country) %>%
+                                       summarise(article_total = n(), .groups = "drop")
+figure9B <- figure9B %>% mutate(article_percent = 100 * article_total / openalex_articles_2023_all$article_total[match(country, openalex_articles_2023_all$country)])
+
+# merge using full country names
+figure9B <- world %>% left_join(figure9B, by = c("admin" = "country"))
+
+# plot map
+ggplot(figure9B) +
+  geom_sf(aes(fill = article_percent), color = "grey", size = 0.1) +
+  scale_fill_gradient(low = "#FEE08B", high = "#F46D43", na.value = "grey80", limits = c(0, 35),
+                      name = "% of articles in mainstream local journals") +
+  labs(x = NULL, y = NULL) +
+  theme_minimal() +
+  theme(legend.position = "bottom",
+        legend.title = element_text(size = 12),
+        legend.text = element_text(size = 12),
+        legend.key.width = unit(1.4, "cm"),
+        panel.grid = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        panel.background = element_rect(fill = "white", color = NA),
+        plot.background = element_rect(fill = "white", color = NA))
+ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig9B.png", width = 12, height = 6, dpi = 600)
 
