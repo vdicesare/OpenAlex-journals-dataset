@@ -1137,6 +1137,85 @@ ggplot(figure4B) +
 ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig4B.png", width = 12, height = 6, dpi = 600)
 
 
+## TRIAL FIGURE 4C
+# identify the local journals where each country has published during 2023, and compute the percentages of non-English local journals
+figure4C <- openalex_articles_2023 %>% mutate(journal_id = as.character(journal_id)) %>%
+                                       inner_join(local_journals_territory %>%
+                                                    mutate(OA_source_ID = as.character(OA_source_ID)) %>%
+                                                    select(OA_source_ID, langs),
+                                                  by = c("journal_id" = "OA_source_ID")) %>%
+                                       distinct(country, journal_id, langs) %>%
+                                       add_count(country, langs, name = "n_journals") %>%
+                                       add_count(country, name = "total_journals") %>%
+                                       distinct(country, langs, n_journals, total_journals) %>%
+                                       mutate(percent_journals = 100 * n_journals / total_journals,
+                                              langs_label = ifelse(langs == 1, "English local journals",
+                                                                   "Non-English local journals"))
+
+# merge only non-English cases using full country names
+figure4C <- world %>% left_join(figure4C %>% filter(langs == 0), by = c("admin" = "country"))
+
+# plot map
+ggplot(figure4C) +
+  geom_sf(aes(fill = percent_journals), color = "grey", size = 0.1) +
+  scale_fill_gradient(low = "#E6F598", high = "#3288BD", na.value = "grey80",
+                      #limits = c(0, 86),
+                      name = "% of non-English local journals") +
+  labs(x = NULL, y = NULL) +
+  theme_minimal() +
+  theme(legend.position = "bottom",
+        legend.title = element_text(size = 12),
+        legend.text = element_text(size = 12),
+        legend.key.width = unit(1.4, "cm"),
+        panel.grid = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        panel.background = element_rect(fill = "white", color = NA),
+        plot.background = element_rect(fill = "white", color = NA))
+ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig4C.png", width = 12, height = 6, dpi = 600)
+
+
+## TRIAL FIGURE 4D
+# identify the local journals where each country has published during 2023, and compute the percentages of open-access local journals
+figure4D <- openalex_articles_2023 %>% mutate(journal_id = as.character(journal_id)) %>%
+                                       inner_join(local_journals_territory %>%
+                                       mutate(OA_source_ID = as.character(OA_source_ID),
+                                              is_OA = map_lgl(open_access, ~ {if (is.null(.x)) return(FALSE)
+                                                .x$SCOP_open_access == "Unpaywall Open Access" |
+                                                  .x$DOAJ_open_access == "Yes" |
+                                                  .x$OA_open_access == TRUE})) %>%
+                                       select(OA_source_ID, is_OA), by = c("journal_id" = "OA_source_ID")) %>%
+                                       distinct(country, journal_id, is_OA) %>%
+                                       add_count(country, is_OA, name = "n_journals") %>%
+                                       add_count(country, name = "total_journals") %>%
+                                       distinct(country, is_OA, n_journals, total_journals) %>%
+                                       mutate(percent_journals = 100 * n_journals / total_journals,
+                                              OA_label = ifelse(is_OA, "Open-access local journals",
+                                                                "Closed-access local journals"))
+
+# merge only open-access cases using full country names
+figure4D <- world %>% left_join(figure4D %>% filter(is_OA == TRUE), by = c("admin" = "country"))
+
+# plot map
+ggplot(figure4D) +
+  geom_sf(aes(fill = percent_journals), color = "grey", size = 0.1) +
+  scale_fill_gradient(low = "#E6F598", high = "#3288BD", na.value = "grey80",
+                      #limits = c(0, 86),
+                      name = "% of open-access local journals") +
+  labs(x = NULL, y = NULL) +
+  theme_minimal() +
+  theme(legend.position = "bottom",
+        legend.title = element_text(size = 12),
+        legend.text = element_text(size = 12),
+        legend.key.width = unit(1.4, "cm"),
+        panel.grid = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        panel.background = element_rect(fill = "white", color = NA),
+        plot.background = element_rect(fill = "white", color = NA))
+ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig4D.png", width = 12, height = 6, dpi = 600)
+
+
 ### PRODUCERS RESULTS
 local_journals_producers <- ddff_megamerge %>% filter(local_producers == "local")
 
