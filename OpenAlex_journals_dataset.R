@@ -825,7 +825,7 @@ figure2 <- draw_2set_venn(set1_size = OA_size,
 ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig2_OA_DOAJ.png", figure2, width = 6, height = 6, dpi = 300)
 
 
-## TABLE 1
+## TABLE 3
 # count unique journals with MJL or JCR IDs in order to group under WOS. The same can be done for Scopus and its sources SCOP, SJR and CWTS
 ddff_megamerge %>% mutate(MJL_ID = map_chr(other_IDs, ~ .x$MJL_ID %||% NA_character_),
                           JCR_ID  = map_chr(other_IDs, ~ .x$JCR_ID  %||% NA_character_)) %>%
@@ -965,15 +965,15 @@ ddff_megamerge %>% mutate(MJL_ID = map_chr(other_IDs, ~ .x$MJL_ID %||% NA_charac
                     print(n = Inf)
 
 
-## TABLE 2
-table2 <- ddff_megamerge %>% select(OA_ID, OA_domains, mains, local_territory, local_producers, local_recipients) %>%
+## TABLE 4
+table4 <- ddff_megamerge %>% select(OA_ID, OA_domains, mains, local_territory, local_producers, local_recipients) %>%
                              distinct()
 
-table2 <- table2 %>% mutate(OA_domains = strsplit(OA_domains, ";\\s*")) %>% 
+table4 <- table4 %>% mutate(OA_domains = strsplit(OA_domains, ";\\s*")) %>% 
                      unnest(OA_domains) %>%
                      filter(!is.na(OA_domains) & OA_domains != "", OA_domains != "NA")
 
-table2 <- table2 %>% pivot_longer(cols = c(local_territory, local_producers, local_recipients),
+table4 <- table4 %>% pivot_longer(cols = c(local_territory, local_producers, local_recipients),
                                   names_to = "conceptualization",
                                   values_to = "is_local") %>%
                      mutate(is_local = is_local == "local") %>%
@@ -1137,9 +1137,9 @@ ggplot(figure4B) +
 ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig4B.png", width = 12, height = 6, dpi = 600)
 
 
-## TRIAL FIGURE 4C
+## FIGURE 5
 # identify the local journals where each country has published during 2023, and compute the percentages of non-English local journals
-figure4C <- openalex_articles_2023 %>% mutate(journal_id = as.character(journal_id)) %>%
+figure5A <- openalex_articles_2023 %>% mutate(journal_id = as.character(journal_id)) %>%
                                        inner_join(local_journals_territory %>%
                                                     mutate(OA_source_ID = as.character(OA_source_ID)) %>%
                                                     select(OA_source_ID, langs),
@@ -1153,38 +1153,29 @@ figure4C <- openalex_articles_2023 %>% mutate(journal_id = as.character(journal_
                                                                    "Non-English local journals"))
 
 # merge only non-English cases using full country names
-figure4C <- world %>% left_join(figure4C %>% filter(langs == 0), by = c("admin" = "country"))
+figure5A <- world %>% left_join(figure5A %>% filter(langs == 0), by = c("admin" = "country"))
 
-# plot map
-ggplot(figure4C) +
-  geom_sf(aes(fill = percent_journals), color = "grey", size = 0.1) +
-  scale_fill_gradient(low = "#E6F598", high = "#3288BD", na.value = "grey80",
-                      #limits = c(0, 86),
-                      name = "% of non-English local journals") +
-  labs(x = NULL, y = NULL) +
-  theme_minimal() +
-  theme(legend.position = "bottom",
-        legend.title = element_text(size = 12),
-        legend.text = element_text(size = 12),
-        legend.key.width = unit(1.4, "cm"),
-        panel.grid = element_blank(),
-        axis.text = element_blank(),
-        axis.ticks = element_blank(),
-        panel.background = element_rect(fill = "white", color = NA),
-        plot.background = element_rect(fill = "white", color = NA))
-ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig4C.png", width = 12, height = 6, dpi = 600)
+# group countries at the region level
+figure5A <- figure5A %>% mutate(region_custom = case_when(region_un %in% c("Africa", "Asia", "Europe", "Oceania") ~ region_un,
+                                                          region_un == "Americas" & subregion == "Northern America" ~ "North America",
+                                                          region_un == "Americas" & subregion %in% c("Central America", "Caribbean") ~ "Central America & the Caribbean",
+                                                          region_un == "Americas" & subregion == "South America" ~ "South America",
+                                                          TRUE ~ NA_character_))
 
+# convert to long format
+figure5A <- figure5A %>% select(name_long, region_custom, percent_journals, langs_label) %>%
+                         rename(percent = percent_journals) %>%
+                         mutate(metric = "Non-English")
 
-## TRIAL FIGURE 4D
 # identify the local journals where each country has published during 2023, and compute the percentages of open-access local journals
-figure4D <- openalex_articles_2023 %>% mutate(journal_id = as.character(journal_id)) %>%
+figure5B <- openalex_articles_2023 %>% mutate(journal_id = as.character(journal_id)) %>%
                                        inner_join(local_journals_territory %>%
-                                       mutate(OA_source_ID = as.character(OA_source_ID),
-                                              is_OA = map_lgl(open_access, ~ {if (is.null(.x)) return(FALSE)
-                                                .x$SCOP_open_access == "Unpaywall Open Access" |
-                                                  .x$DOAJ_open_access == "Yes" |
-                                                  .x$OA_open_access == TRUE})) %>%
-                                       select(OA_source_ID, is_OA), by = c("journal_id" = "OA_source_ID")) %>%
+                                                    mutate(OA_source_ID = as.character(OA_source_ID),
+                                                           is_OA = map_lgl(open_access, ~ {if (is.null(.x)) return(FALSE)
+                                                             .x$SCOP_open_access == "Unpaywall Open Access" |
+                                                               .x$DOAJ_open_access == "Yes" |
+                                                               .x$OA_open_access == TRUE})) %>%
+                                                    select(OA_source_ID, is_OA), by = c("journal_id" = "OA_source_ID")) %>%
                                        distinct(country, journal_id, is_OA) %>%
                                        add_count(country, is_OA, name = "n_journals") %>%
                                        add_count(country, name = "total_journals") %>%
@@ -1194,33 +1185,54 @@ figure4D <- openalex_articles_2023 %>% mutate(journal_id = as.character(journal_
                                                                 "Closed-access local journals"))
 
 # merge only open-access cases using full country names
-figure4D <- world %>% left_join(figure4D %>% filter(is_OA == TRUE), by = c("admin" = "country"))
+figure5B <- world %>% left_join(figure5B %>% filter(is_OA == TRUE), by = c("admin" = "country"))
 
-# plot map
-ggplot(figure4D) +
-  geom_sf(aes(fill = percent_journals), color = "grey", size = 0.1) +
-  scale_fill_gradient(low = "#E6F598", high = "#3288BD", na.value = "grey80",
-                      #limits = c(0, 86),
-                      name = "% of open-access local journals") +
-  labs(x = NULL, y = NULL) +
+# group countries at the region level
+figure5B <- figure5B %>% mutate(region_custom = case_when(region_un %in% c("Africa", "Asia", "Europe", "Oceania") ~ region_un,
+                                                          region_un == "Americas" & subregion == "Northern America" ~ "North America",
+                                                          region_un == "Americas" & subregion %in% c("Central America", "Caribbean") ~ "Central America & the Caribbean",
+                                                          region_un == "Americas" & subregion == "South America" ~ "South America",
+                                                          TRUE ~ NA_character_))
+
+# convert to long format
+figure5B <- figure5B %>% select(name_long, region_custom, percent_journals, OA_label) %>%
+                         rename(percent = percent_journals) %>%
+                         mutate(metric = "Open Access")
+
+# combine both figure5 A & B into a single dataframe for plotting purposes
+figure5 <- bind_rows(figure5A %>% rename(label = langs_label),
+                     figure5B %>% rename(label = OA_label))
+
+figure5$region_custom <- factor(figure5$region_custom, levels = c("South America", "Central America & the Caribbean", "North America",
+                                                                  "Europe", "Africa", "Asia", "Oceania"))
+
+# plot boxplot
+figure5 %>% filter(!is.na(percent), !is.na(region_custom)) %>%
+  ggplot(aes(y = region_custom, x = percent, fill = region_custom)) +
+  geom_boxplot(width = 0.6, outlier.shape = NA) +
+  geom_jitter(height = 0.15, size = 1.2, alpha = 0.6, color = "grey50") +
+  facet_wrap(~ metric, ncol = 2) +
+  coord_cartesian(xlim = c(0, 100)) +
+  labs(y = "Region",
+       x = "% of mainstream local journals") +
+  scale_y_discrete(labels = c("South America", "Central America\n& the Caribbean", "North America",
+                              "Europe", "Africa", "Asia", "Oceania")) +
+  scale_fill_manual(values = c("South America" = "#FEE08B", "Central America & the Caribbean" = "#FDAE61", "North America" = "#F46D43",
+                               "Europe" = "#D53E4F", "Africa" = "#3288BD", "Asia" = "#66C2A5", "Oceania" = "#E6F598")) +
   theme_minimal() +
-  theme(legend.position = "bottom",
-        legend.title = element_text(size = 12),
-        legend.text = element_text(size = 12),
-        legend.key.width = unit(1.4, "cm"),
-        panel.grid = element_blank(),
-        axis.text = element_blank(),
-        axis.ticks = element_blank(),
-        panel.background = element_rect(fill = "white", color = NA),
-        plot.background = element_rect(fill = "white", color = NA))
-ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig4D.png", width = 12, height = 6, dpi = 600)
+  theme(axis.text.x = element_text(size = 13),
+        axis.text.y = element_text(size = 13),
+        axis.title = element_text(size = 14),
+        legend.position = "none",
+        strip.text = element_text(size = 17, face = "bold"))
+ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig5.png", width = 9, height = 6, dpi = 600)
 
 
 ### PRODUCERS RESULTS
 local_journals_producers <- ddff_megamerge %>% filter(local_producers == "local")
 
-## FIGURE 5
-figure5 <- local_journals_producers %>% mutate(OA_domains = strsplit(OA_domains, ";")) %>%
+## FIGURE 6
+figure6 <- local_journals_producers %>% mutate(OA_domains = strsplit(OA_domains, ";")) %>%
                                         unnest(OA_domains) %>%
                                         mutate(OA_domains = trimws(OA_domains)) %>%
                                         filter(!is.na(OA_domains) & OA_domains != "") %>%
@@ -1231,24 +1243,24 @@ figure5 <- local_journals_producers %>% mutate(OA_domains = strsplit(OA_domains,
                                           is_non_english = langs == 0,
                                           is_overall = TRUE)
 
-figure5 <- figure5 %>% select(OA_ID, OA_domains, mains, is_OA, is_non_english, is_overall) %>%
+figure6 <- figure6 %>% select(OA_ID, OA_domains, mains, is_OA, is_non_english, is_overall) %>%
                        distinct() %>%
                        pivot_longer(cols = c(is_OA, is_non_english, is_overall), names_to = "group", values_to = "value") %>%
                        filter(value == TRUE) %>%
                        mutate(group = recode(group, "is_OA" = "Open Access", "is_non_english" = "Non-English", "is_overall" = "Overall"))
 
-figure5 <- figure5 %>% filter(!is.na(OA_domains) & OA_domains != "" & OA_domains != "NA")
+figure6 <- figure6 %>% filter(!is.na(OA_domains) & OA_domains != "" & OA_domains != "NA")
 
-figure5 <- figure5 %>% group_by(group, OA_domains, mains) %>%
+figure6 <- figure6 %>% group_by(group, OA_domains, mains) %>%
                        summarise(n = n(), .groups = "drop") %>%
                        group_by(group, OA_domains) %>%
                        mutate(perc = n / sum(n) * 100)
 
-figure5 <- figure5 %>% mutate(mains_label = factor(mains, levels = c(0, 1), labels = c("Non-mainstream", "Mainstream")))
-figure5 <- figure5 %>% mutate(OA_domains = factor(OA_domains, levels = c("Social Sciences", "Physical Sciences", "Life Sciences", "Health Sciences")))
-figure5 <- figure5 %>% mutate(group = factor(group, levels = c("Overall", "Non-English", "Open Access")))
+figure6 <- figure6 %>% mutate(mains_label = factor(mains, levels = c(0, 1), labels = c("Non-mainstream", "Mainstream")))
+figure6 <- figure6 %>% mutate(OA_domains = factor(OA_domains, levels = c("Social Sciences", "Physical Sciences", "Life Sciences", "Health Sciences")))
+figure6 <- figure6 %>% mutate(group = factor(group, levels = c("Overall", "Non-English", "Open Access")))
 
-ggplot(figure5, aes(x = perc, y = OA_domains, fill = mains_label)) +
+ggplot(figure6, aes(x = perc, y = OA_domains, fill = mains_label)) +
   geom_col(position = position_dodge(width = 0.6), width = 0.6) +
   facet_wrap(~ group, ncol = 3) +
   coord_cartesian(xlim = c(0, 100)) +
@@ -1258,21 +1270,21 @@ ggplot(figure5, aes(x = perc, y = OA_domains, fill = mains_label)) +
   theme_minimal() +
   theme(strip.text = element_text(size = 12, face = "bold"), axis.text.y = element_text(size = 7),
         legend.position = "bottom", legend.direction = "horizontal", legend.key.size = unit(0.4, "cm"), legend.text = element_text(size = 7))
-ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig5.png", width = 6, height = 3, dpi = 300)
+ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig6.png", width = 6, height = 3, dpi = 300)
 
 
-## FIGURE 6A
+## FIGURE 7A
 # sum the number of articles per country to know their 2023 publications total within local journals, and compute the proportion of articles in local journals with respect to all their 2023 publications
-figure6A <- openalex_articles_2023 %>% filter(journal_id %in% local_journals_producers$OA_source_ID) %>%
+figure7A <- openalex_articles_2023 %>% filter(journal_id %in% local_journals_producers$OA_source_ID) %>%
                                        group_by(country) %>%
                                        summarise(article_total = n(), .groups = "drop")
-figure6A <- figure6A %>% mutate(article_percent = 100 * article_total / openalex_articles_2023_all$article_total[match(country, openalex_articles_2023_all$country)])
+figure7A <- figure7A %>% mutate(article_percent = 100 * article_total / openalex_articles_2023_all$article_total[match(country, openalex_articles_2023_all$country)])
 
 # merge using full country names
-figure6A <- world %>% left_join(figure6A, by = c("admin" = "country"))
+figure7A <- world %>% left_join(figure7A, by = c("admin" = "country"))
 
 # plot map
-ggplot(figure6A) +
+ggplot(figure7A) +
   geom_sf(aes(fill = article_percent), color = "grey", size = 0.1) +
   scale_fill_gradient(low = "#E6F598", high = "#3288BD", na.value = "grey80",
                       #limits = c(0, 45),
@@ -1288,12 +1300,12 @@ ggplot(figure6A) +
         axis.ticks = element_blank(),
         panel.background = element_rect(fill = "white", color = NA),
         plot.background = element_rect(fill = "white", color = NA))
-ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig6A.png", width = 12, height = 6, dpi = 600)
+ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig7A.png", width = 12, height = 6, dpi = 600)
 
 
-## FIGURE 6B
+## FIGURE 7B
 # identify the local journals where each country has published during 2023, and compute the percentages of mainstream and non-mainstream local journals, which are complementary
-figure6B <- openalex_articles_2023 %>% mutate(journal_id = as.character(journal_id)) %>%
+figure7B <- openalex_articles_2023 %>% mutate(journal_id = as.character(journal_id)) %>%
                                        inner_join(local_journals_producers %>%
                                                     mutate(OA_source_ID = as.character(OA_source_ID)) %>%
                                                     select(OA_source_ID, mains),
@@ -1307,10 +1319,10 @@ figure6B <- openalex_articles_2023 %>% mutate(journal_id = as.character(journal_
                                                                    "Non-mainstream local journals"))
 
 # merge only mainstream cases using full country names
-figure6B <- world %>% left_join(figure6B %>% filter(mains == 1), by = c("admin" = "country"))
+figure7B <- world %>% left_join(figure7B %>% filter(mains == 1), by = c("admin" = "country"))
 
 # plot map
-ggplot(figure6B) +
+ggplot(figure7B) +
   geom_sf(aes(fill = percent_journals), color = "grey", size = 0.1) +
   scale_fill_gradient(low = "#E6F598", high = "#3288BD", na.value = "grey80",
                       #limits = c(0, 86),
@@ -1326,14 +1338,105 @@ ggplot(figure6B) +
         axis.ticks = element_blank(),
         panel.background = element_rect(fill = "white", color = NA),
         plot.background = element_rect(fill = "white", color = NA))
-ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig6B.png", width = 12, height = 6, dpi = 600)
+ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig7B.png", width = 12, height = 6, dpi = 600)
+
+
+# FIGURE 8
+# identify the local journals where each country has published during 2023, and compute the percentages of non-English local journals
+figure8A <- openalex_articles_2023 %>% mutate(journal_id = as.character(journal_id)) %>%
+                                       inner_join(local_journals_producers %>%
+                                                    mutate(OA_source_ID = as.character(OA_source_ID)) %>%
+                                                    select(OA_source_ID, langs),
+                                                  by = c("journal_id" = "OA_source_ID")) %>%
+                                       distinct(country, journal_id, langs) %>%
+                                       add_count(country, langs, name = "n_journals") %>%
+                                       add_count(country, name = "total_journals") %>%
+                                       distinct(country, langs, n_journals, total_journals) %>%
+                                       mutate(percent_journals = 100 * n_journals / total_journals,
+                                              langs_label = ifelse(langs == 1, "English local journals",
+                                                                   "Non-English local journals"))
+
+# merge only non-English cases using full country names
+figure8A <- world %>% left_join(figure8A %>% filter(langs == 0), by = c("admin" = "country"))
+
+# group countries at the region level
+figure8A <- figure8A %>% mutate(region_custom = case_when(region_un %in% c("Africa", "Asia", "Europe", "Oceania") ~ region_un,
+                                                          region_un == "Americas" & subregion == "Northern America" ~ "North America",
+                                                          region_un == "Americas" & subregion %in% c("Central America", "Caribbean") ~ "Central America & the Caribbean",
+                                                          region_un == "Americas" & subregion == "South America" ~ "South America",
+                                                          TRUE ~ NA_character_))
+
+# convert to long format
+figure8A <- figure8A %>% select(name_long, region_custom, percent_journals, langs_label) %>%
+                         rename(percent = percent_journals) %>%
+                         mutate(metric = "Non-English")
+
+# identify the local journals where each country has published during 2023, and compute the percentages of open-access local journals
+figure8B <- openalex_articles_2023 %>% mutate(journal_id = as.character(journal_id)) %>%
+                                       inner_join(local_journals_producers %>%
+                                       mutate(OA_source_ID = as.character(OA_source_ID),
+                                              is_OA = map_lgl(open_access, ~ {if (is.null(.x)) return(FALSE)
+                                                .x$SCOP_open_access == "Unpaywall Open Access" |
+                                                  .x$DOAJ_open_access == "Yes" |
+                                                  .x$OA_open_access == TRUE})) %>%
+                                         select(OA_source_ID, is_OA), by = c("journal_id" = "OA_source_ID")) %>%
+                                       distinct(country, journal_id, is_OA) %>%
+                                       add_count(country, is_OA, name = "n_journals") %>%
+                                       add_count(country, name = "total_journals") %>%
+                                       distinct(country, is_OA, n_journals, total_journals) %>%
+                                       mutate(percent_journals = 100 * n_journals / total_journals,
+                                              OA_label = ifelse(is_OA, "Open-access local journals",
+                                                                "Closed-access local journals"))
+
+# merge only open-access cases using full country names
+figure8B <- world %>% left_join(figure8B %>% filter(is_OA == TRUE), by = c("admin" = "country"))
+
+# group countries at the region level
+figure8B <- figure8B %>% mutate(region_custom = case_when(region_un %in% c("Africa", "Asia", "Europe", "Oceania") ~ region_un,
+                                                          region_un == "Americas" & subregion == "Northern America" ~ "North America",
+                                                          region_un == "Americas" & subregion %in% c("Central America", "Caribbean") ~ "Central America & the Caribbean",
+                                                          region_un == "Americas" & subregion == "South America" ~ "South America",
+                                                          TRUE ~ NA_character_))
+
+# convert to long format
+figure8B <- figure8B %>% select(name_long, region_custom, percent_journals, OA_label) %>%
+                         rename(percent = percent_journals) %>%
+                         mutate(metric = "Open Access")
+
+# combine both figure8 A & B into a single dataframe for plotting purposes
+figure8 <- bind_rows(figure8A %>% rename(label = langs_label),
+                     figure8B %>% rename(label = OA_label))
+
+figure8$region_custom <- factor(figure8$region_custom, levels = c("South America", "Central America & the Caribbean", "North America",
+                                                                  "Europe", "Africa", "Asia", "Oceania"))
+
+# plot boxplot
+figure8 %>% filter(!is.na(percent), !is.na(region_custom)) %>%
+  ggplot(aes(y = region_custom, x = percent, fill = region_custom)) +
+  geom_boxplot(width = 0.6, outlier.shape = NA) +
+  geom_jitter(height = 0.15, size = 1.2, alpha = 0.6, color = "grey50") +
+  facet_wrap(~ metric, ncol = 2) +
+  coord_cartesian(xlim = c(0, 100)) +
+  labs(y = "Region",
+       x = "% of mainstream local journals") +
+  scale_y_discrete(labels = c("South America", "Central America\n& the Caribbean", "North America",
+                              "Europe", "Africa", "Asia", "Oceania")) +
+  scale_fill_manual(values = c("South America" = "#FEE08B", "Central America & the Caribbean" = "#FDAE61", "North America" = "#F46D43",
+                               "Europe" = "#D53E4F", "Africa" = "#3288BD", "Asia" = "#66C2A5", "Oceania" = "#E6F598")) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(size = 13),
+        axis.text.y = element_text(size = 13),
+        axis.title = element_text(size = 14),
+        legend.position = "none",
+        strip.text = element_text(size = 17, face = "bold"))
+ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig8.png", width = 9, height = 6, dpi = 600)
 
 
 ### RECIPIENTS RESULTS
 local_journals_recipients <- ddff_megamerge %>% filter(local_recipients == "local")
 
-## FIGURE 7
-figure7 <- local_journals_recipients %>% mutate(OA_domains = strsplit(OA_domains, ";")) %>%
+## FIGURE 9
+figure9 <- local_journals_recipients %>% mutate(OA_domains = strsplit(OA_domains, ";")) %>%
                                          unnest(OA_domains) %>%
                                          mutate(OA_domains = trimws(OA_domains)) %>%
                                          filter(!is.na(OA_domains) & OA_domains != "") %>%
@@ -1344,24 +1447,24 @@ figure7 <- local_journals_recipients %>% mutate(OA_domains = strsplit(OA_domains
                                            is_non_english = langs == 0,
                                            is_overall = TRUE)
 
-figure7 <- figure7 %>% select(OA_ID, OA_domains, mains, is_OA, is_non_english, is_overall) %>%
+figure9 <- figure9 %>% select(OA_ID, OA_domains, mains, is_OA, is_non_english, is_overall) %>%
                        distinct() %>%
                        pivot_longer(cols = c(is_OA, is_non_english, is_overall), names_to = "group", values_to = "value") %>%
                        filter(value == TRUE) %>%
                        mutate(group = recode(group, "is_OA" = "Open Access", "is_non_english" = "Non-English", "is_overall" = "Overall"))
 
-figure7 <- figure7 %>% filter(!is.na(OA_domains) & OA_domains != "" & OA_domains != "NA")
+figure9 <- figure9 %>% filter(!is.na(OA_domains) & OA_domains != "" & OA_domains != "NA")
 
-figure7 <- figure7 %>% group_by(group, OA_domains, mains) %>%
+figure9 <- figure9 %>% group_by(group, OA_domains, mains) %>%
                        summarise(n = n(), .groups = "drop") %>%
                        group_by(group, OA_domains) %>%
                        mutate(perc = n / sum(n) * 100)
 
-figure7 <- figure7 %>% mutate(mains_label = factor(mains, levels = c(0, 1), labels = c("Non-mainstream", "Mainstream")))
-figure7 <- figure7 %>% mutate(OA_domains = factor(OA_domains, levels = c("Social Sciences", "Physical Sciences", "Life Sciences", "Health Sciences")))
-figure7 <- figure7 %>% mutate(group = factor(group, levels = c("Overall", "Non-English", "Open Access")))
+figure9 <- figure9 %>% mutate(mains_label = factor(mains, levels = c(0, 1), labels = c("Non-mainstream", "Mainstream")))
+figure9 <- figure9 %>% mutate(OA_domains = factor(OA_domains, levels = c("Social Sciences", "Physical Sciences", "Life Sciences", "Health Sciences")))
+figure9 <- figure9 %>% mutate(group = factor(group, levels = c("Overall", "Non-English", "Open Access")))
 
-ggplot(figure7, aes(x = perc, y = OA_domains, fill = mains_label)) +
+ggplot(figure9, aes(x = perc, y = OA_domains, fill = mains_label)) +
   geom_col(position = position_dodge(width = 0.6), width = 0.6) +
   facet_wrap(~ group, ncol = 3) +
   coord_cartesian(xlim = c(0, 100)) +
@@ -1371,21 +1474,21 @@ ggplot(figure7, aes(x = perc, y = OA_domains, fill = mains_label)) +
   theme_minimal() +
   theme(strip.text = element_text(size = 12, face = "bold"), axis.text.y = element_text(size = 7),
         legend.position = "bottom", legend.direction = "horizontal", legend.key.size = unit(0.4, "cm"), legend.text = element_text(size = 7))
-ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig7.png", width = 6, height = 3, dpi = 300)
+ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig9.png", width = 6, height = 3, dpi = 300)
 
 
-## FIGURE 8A
+## FIGURE 10A
 # sum the number of articles per country to know their 2023 publications total within local journals, and compute the proportion of articles in local journals with respect to all their 2023 publications
-figure8A <- openalex_articles_2023 %>% filter(journal_id %in% local_journals_recipients$OA_source_ID) %>%
+figure10A <- openalex_articles_2023 %>% filter(journal_id %in% local_journals_recipients$OA_source_ID) %>%
                                        group_by(country) %>%
                                        summarise(article_total = n(), .groups = "drop")
-figure8A <- figure8A %>% mutate(article_percent = 100 * article_total / openalex_articles_2023_all$article_total[match(country, openalex_articles_2023_all$country)])
+figure10A <- figure10A %>% mutate(article_percent = 100 * article_total / openalex_articles_2023_all$article_total[match(country, openalex_articles_2023_all$country)])
 
 # merge using full country names
-figure8A <- world %>% left_join(figure8A, by = c("admin" = "country"))
+figure10A <- world %>% left_join(figure10A, by = c("admin" = "country"))
 
 # plot map
-ggplot(figure8A) +
+ggplot(figure10A) +
   geom_sf(aes(fill = article_percent), color = "grey", size = 0.1) +
   scale_fill_gradient(low = "#E6F598", high = "#3288BD", na.value = "grey80",
                       #limits = c(0, 35),
@@ -1401,12 +1504,12 @@ ggplot(figure8A) +
         axis.ticks = element_blank(),
         panel.background = element_rect(fill = "white", color = NA),
         plot.background = element_rect(fill = "white", color = NA))
-ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig8A.png", width = 12, height = 6, dpi = 600)
+ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig10A.png", width = 12, height = 6, dpi = 600)
 
 
-## FIGURE 8B
+## FIGURE 10B
 # identify the local journals where each country has published during 2023, and compute the percentages of mainstream and non-mainstream local journals, which are complementary
-figure8B <- openalex_articles_2023 %>% mutate(journal_id = as.character(journal_id)) %>%
+figure10B <- openalex_articles_2023 %>% mutate(journal_id = as.character(journal_id)) %>%
                                        inner_join(local_journals_recipients %>%
                                                     mutate(OA_source_ID = as.character(OA_source_ID)) %>%
                                                     select(OA_source_ID, mains),
@@ -1420,10 +1523,10 @@ figure8B <- openalex_articles_2023 %>% mutate(journal_id = as.character(journal_
                                                                    "Non-mainstream local journals"))
 
 # merge only mainstream cases using full country names
-figure8B <- world %>% left_join(figure8B %>% filter(mains == 1), by = c("admin" = "country"))
+figure10B <- world %>% left_join(figure10B %>% filter(mains == 1), by = c("admin" = "country"))
 
 # plot map
-ggplot(figure8B) +
+ggplot(figure10B) +
   geom_sf(aes(fill = percent_journals), color = "grey", size = 0.1) +
   scale_fill_gradient(low = "#E6F598", high = "#3288BD", na.value = "grey80",
                       #limits = c(0, 86),
@@ -1439,4 +1542,95 @@ ggplot(figure8B) +
         axis.ticks = element_blank(),
         panel.background = element_rect(fill = "white", color = NA),
         plot.background = element_rect(fill = "white", color = NA))
-ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig8B.png", width = 12, height = 6, dpi = 600)
+ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig10B.png", width = 12, height = 6, dpi = 600)
+
+
+# FIGURE 11
+# identify the local journals where each country has published during 2023, and compute the percentages of non-English local journals
+figure11A <- openalex_articles_2023 %>% mutate(journal_id = as.character(journal_id)) %>%
+                                        inner_join(local_journals_recipients %>%
+                                                     mutate(OA_source_ID = as.character(OA_source_ID)) %>%
+                                                     select(OA_source_ID, langs),
+                                                   by = c("journal_id" = "OA_source_ID")) %>%
+                                        distinct(country, journal_id, langs) %>%
+                                        add_count(country, langs, name = "n_journals") %>%
+                                        add_count(country, name = "total_journals") %>%
+                                        distinct(country, langs, n_journals, total_journals) %>%
+                                        mutate(percent_journals = 100 * n_journals / total_journals,
+                                               langs_label = ifelse(langs == 1, "English local journals",
+                                                                    "Non-English local journals"))
+
+# merge only non-English cases using full country names
+figure11A <- world %>% left_join(figure11A %>% filter(langs == 0), by = c("admin" = "country"))
+
+# group countries at the region level
+figure11A <- figure11A %>% mutate(region_custom = case_when(region_un %in% c("Africa", "Asia", "Europe", "Oceania") ~ region_un,
+                                                          region_un == "Americas" & subregion == "Northern America" ~ "North America",
+                                                          region_un == "Americas" & subregion %in% c("Central America", "Caribbean") ~ "Central America & the Caribbean",
+                                                          region_un == "Americas" & subregion == "South America" ~ "South America",
+                                                          TRUE ~ NA_character_))
+
+# convert to long format
+figure11A <- figure11A %>% select(name_long, region_custom, percent_journals, langs_label) %>%
+                           rename(percent = percent_journals) %>%
+                           mutate(metric = "Non-English")
+
+# identify the local journals where each country has published during 2023, and compute the percentages of open-access local journals
+figure11B <- openalex_articles_2023 %>% mutate(journal_id = as.character(journal_id)) %>%
+                                        inner_join(local_journals_recipients %>%
+                                                     mutate(OA_source_ID = as.character(OA_source_ID),
+                                                            is_OA = map_lgl(open_access, ~ {if (is.null(.x)) return(FALSE)
+                                                              .x$SCOP_open_access == "Unpaywall Open Access" |
+                                                                .x$DOAJ_open_access == "Yes" |
+                                                                .x$OA_open_access == TRUE})) %>%
+                                                     select(OA_source_ID, is_OA), by = c("journal_id" = "OA_source_ID")) %>%
+                                        distinct(country, journal_id, is_OA) %>%
+                                        add_count(country, is_OA, name = "n_journals") %>%
+                                        add_count(country, name = "total_journals") %>%
+                                        distinct(country, is_OA, n_journals, total_journals) %>%
+                                        mutate(percent_journals = 100 * n_journals / total_journals,
+                                               OA_label = ifelse(is_OA, "Open-access local journals",
+                                                                 "Closed-access local journals"))
+
+# merge only open-access cases using full country names
+figure11B <- world %>% left_join(figure11B %>% filter(is_OA == TRUE), by = c("admin" = "country"))
+
+# group countries at the region level
+figure11B <- figure11B %>% mutate(region_custom = case_when(region_un %in% c("Africa", "Asia", "Europe", "Oceania") ~ region_un,
+                                                          region_un == "Americas" & subregion == "Northern America" ~ "North America",
+                                                          region_un == "Americas" & subregion %in% c("Central America", "Caribbean") ~ "Central America & the Caribbean",
+                                                          region_un == "Americas" & subregion == "South America" ~ "South America",
+                                                          TRUE ~ NA_character_))
+
+# convert to long format
+figure11B <- figure11B %>% select(name_long, region_custom, percent_journals, OA_label) %>%
+                           rename(percent = percent_journals) %>%
+                           mutate(metric = "Open Access")
+
+# combine both figure11 A & B into a single dataframe for plotting purposes
+figure11 <- bind_rows(figure11A %>% rename(label = langs_label),
+                      figure11B %>% rename(label = OA_label))
+
+figure11$region_custom <- factor(figure11$region_custom, levels = c("South America", "Central America & the Caribbean", "North America",
+                                                                    "Europe", "Africa", "Asia", "Oceania"))
+
+# plot boxplot
+figure11 %>% filter(!is.na(percent), !is.na(region_custom)) %>%
+  ggplot(aes(y = region_custom, x = percent, fill = region_custom)) +
+  geom_boxplot(width = 0.6, outlier.shape = NA) +
+  geom_jitter(height = 0.15, size = 1.2, alpha = 0.6, color = "grey50") +
+  facet_wrap(~ metric, ncol = 2) +
+  coord_cartesian(xlim = c(0, 100)) +
+  labs(y = "Region",
+       x = "% of mainstream local journals") +
+  scale_y_discrete(labels = c("South America", "Central America\n& the Caribbean", "North America",
+                              "Europe", "Africa", "Asia", "Oceania")) +
+  scale_fill_manual(values = c("South America" = "#FEE08B", "Central America & the Caribbean" = "#FDAE61", "North America" = "#F46D43",
+                               "Europe" = "#D53E4F", "Africa" = "#3288BD", "Asia" = "#66C2A5", "Oceania" = "#E6F598")) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(size = 13),
+        axis.text.y = element_text(size = 13),
+        axis.title = element_text(size = 14),
+        legend.position = "none",
+        strip.text = element_text(size = 17, face = "bold"))
+ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig11.png", width = 9, height = 6, dpi = 600)
