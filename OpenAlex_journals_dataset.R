@@ -1203,8 +1203,8 @@ figure5B <- figure5B %>% select(name_long, region_custom, percent_journals, OA_l
 figure5 <- bind_rows(figure5A %>% rename(label = langs_label),
                      figure5B %>% rename(label = OA_label))
 
-figure5$region_custom <- factor(figure5$region_custom, levels = c("South America", "Central America & the Caribbean", "North America",
-                                                                  "Europe", "Africa", "Asia", "Oceania"))
+figure5 <- figure5 %>% mutate(region_custom = case_when(name_long == "Mexico" ~ "North America", TRUE ~ region_custom))
+figure5$region_custom <- factor(figure5$region_custom, levels = c("South America", "Central America & the Caribbean", "North America", "Europe", "Africa", "Asia", "Oceania"))
 
 # plot boxplot
 figure5 %>% filter(!is.na(percent), !is.na(region_custom)) %>%
@@ -1407,8 +1407,8 @@ figure8B <- figure8B %>% select(name_long, region_custom, percent_journals, OA_l
 figure8 <- bind_rows(figure8A %>% rename(label = langs_label),
                      figure8B %>% rename(label = OA_label))
 
-figure8$region_custom <- factor(figure8$region_custom, levels = c("South America", "Central America & the Caribbean", "North America",
-                                                                  "Europe", "Africa", "Asia", "Oceania"))
+figure8 <- figure8 %>% mutate(region_custom = case_when(name_long == "Mexico" ~ "North America", TRUE ~ region_custom))
+figure8$region_custom <- factor(figure8$region_custom, levels = c("South America", "Central America & the Caribbean", "North America", "Europe", "Africa", "Asia", "Oceania"))
 
 # plot boxplot
 figure8 %>% filter(!is.na(percent), !is.na(region_custom)) %>%
@@ -1611,6 +1611,7 @@ figure11B <- figure11B %>% select(name_long, region_custom, percent_journals, OA
 figure11 <- bind_rows(figure11A %>% rename(label = langs_label),
                       figure11B %>% rename(label = OA_label))
 
+figure11 <- figure11 %>% mutate(region_custom = case_when(name_long == "Mexico" ~ "North America", TRUE ~ region_custom))
 figure11$region_custom <- factor(figure11$region_custom, levels = c("South America", "Central America & the Caribbean", "North America",
                                                                     "Europe", "Africa", "Asia", "Oceania"))
 
