@@ -728,8 +728,7 @@ ddff_megamerge <- ddff_megamerge %>% group_by(OA_ID) %>%
                                      ungroup()
 
 
-# save as RDS and CSV through JSON for sharing purposes
-saveRDS(ddff_megamerge, "~/Desktop/OpenAlex_journals_dataset/mega_merge.rds")
+# save as CSV through JSON for sharing purposes
 ddff_megamerge_flat <- ddff_megamerge %>% mutate(other_IDs = sapply(other_IDs, toJSON, auto_unbox = TRUE),
                                                  other_source_IDs = sapply(other_source_IDs, toJSON, auto_unbox = TRUE),
                                                  ISSN_codes = sapply(ISSN_codes, toJSON, auto_unbox = TRUE),
@@ -744,7 +743,7 @@ ddff_megamerge_flat <- ddff_megamerge %>% mutate(other_IDs = sapply(other_IDs, t
                                                  website = sapply(website, toJSON, auto_unbox = TRUE),
                                                  total_articles = sapply(total_articles, toJSON, auto_unbox = TRUE),
                                                  total_citations = sapply(total_citations, toJSON, auto_unbox = TRUE))
-write.csv(ddff_megamerge_flat, "~/Desktop/OpenAlex_journals_dataset/mega_merge.csv", row.names = FALSE)
+#write.csv(ddff_megamerge_flat, "~/Desktop/OpenAlex_journals_dataset/OpenAlex_dataset_merge.csv", row.names = FALSE)
 
 
 ### OVERALL RESULTS
@@ -1031,7 +1030,7 @@ ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig3.png", width = 6, height
 
 ## FIGURE 4A
 openalex_articles_2023 <- list.files(path = "~/Desktop/OpenAlex_journals_dataset/publications_local_variable", pattern = "^local_research_OA2410_publications_local_variable_\\d{12}$", full.names = TRUE)
-openalex_articles_2023 <- rbindlist(lapply(openalex_articles_2023, fread, sep = ","), fill = TRUE)
+openalex_articles_2023 <- rbindlist(lapply(openalex_articles_2023, fread, sep = ",", colClasses = list(character = "journal_id")), fill = TRUE)
 
 # count number of articles per country and journal
 openalex_articles_2023 <- openalex_articles_2023 %>% group_by(journal_id, journal_name, country) %>%
@@ -1062,6 +1061,10 @@ openalex_articles_2023$country[openalex_articles_2023$country == "Timor-Leste"] 
 openalex_articles_2023$country[openalex_articles_2023$country == "Türkiye"] <- "Turkey"
 openalex_articles_2023$country[openalex_articles_2023$country == "U.S. Virgin Islands"] <- "United States Virgin Islands"
 openalex_articles_2023$country[openalex_articles_2023$country == "United States"] <- "United States of America"
+
+# save as CSV for sharing purposes
+setnames(openalex_articles_2023, "journal_id", "OA_source_ID")
+#write.csv(openalex_articles_2023, "~/Desktop/OpenAlex_journals_dataset/OpenAlex_articles_2023.csv", row.names = FALSE)
 
 # sum the number of articles per country to know their 2023 publications total within all OpenAlex journals
 openalex_articles_2023_all <- openalex_articles_2023 %>% group_by(country) %>%
