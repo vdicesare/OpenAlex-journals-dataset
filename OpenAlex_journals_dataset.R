@@ -1068,12 +1068,13 @@ setnames(openalex_articles_2023, "journal_id", "OA_source_ID")
 
 # sum the number of articles per country to know their 2023 publications total within all OpenAlex journals
 openalex_articles_2023_all <- openalex_articles_2023 %>% group_by(country) %>%
-                                                         summarise(article_total = n(), .groups = "drop")
+                                                         summarise(article_total = sum(article_count, na.rm = TRUE), .groups = "drop")
 
 # sum the number of articles per country to know their 2023 publications total within local journals, and compute the proportion of articles in local journals with respect to all their 2023 publications
-figure4A <- openalex_articles_2023 %>% filter(journal_id %in% local_journals_territory$OA_source_ID) %>%
-                                                              group_by(country) %>%
-                                                              summarise(article_total = n(), .groups = "drop")
+figure4A <- openalex_articles_2023 %>% filter(OA_source_ID %in% local_journals_territory$OA_source_ID) %>%
+                                       group_by(country) %>%
+                                       summarise(article_total = sum(article_count, na.rm = TRUE),
+                                                 .groups = "drop")
 figure4A <- figure4A %>% mutate(article_percent = 100 * article_total / openalex_articles_2023_all$article_total[match(country, openalex_articles_2023_all$country)])
 
 # load world shapefile
@@ -1103,29 +1104,30 @@ ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig4A.png", width = 12, heig
 
 
 ## FIGURE 4B
-# identify the local journals where each country has published during 2023, and compute the percentages of mainstream and non-mainstream local journals, which are complementary
-figure4B <- openalex_articles_2023 %>% mutate(journal_id = as.character(journal_id)) %>%
+# identify the local journals where each country has published during 2023, and compute the percentages of articles in mainstream and non-mainstream local journals
+figure4B <- openalex_articles_2023 %>% mutate(OA_source_ID = as.character(OA_source_ID)) %>%
                                        inner_join(local_journals_territory %>%
                                                     mutate(OA_source_ID = as.character(OA_source_ID)) %>%
-                                                    select(OA_source_ID, mains),
-                                                  by = c("journal_id" = "OA_source_ID")) %>%
-                                       distinct(country, journal_id, mains) %>%
-                                       add_count(country, mains, name = "n_journals") %>%
-                                       add_count(country, name = "total_journals") %>%
-                                       distinct(country, mains, n_journals, total_journals) %>%
-                                       mutate(percent_journals = 100 * n_journals / total_journals,
+                                                    select(OA_source_ID, mains), by = "OA_source_ID") %>%
+                                       group_by(country, mains) %>%
+                                       summarise(n_articles = sum(article_count, na.rm = TRUE),
+                                                 .groups = "drop") %>%
+                                       group_by(country) %>%
+                                       mutate(total_articles = sum(n_articles, na.rm = TRUE),
+                                              percent_articles = 100 * n_articles / total_articles,
                                               mains_label = ifelse(mains == 1, "Mainstream local journals",
-                                                                   "Non-mainstream local journals"))
+                                                                   "Non-mainstream local journals")) %>%
+                                       ungroup()
 
 # merge only mainstream cases using full country names
 figure4B <- world %>% left_join(figure4B %>% filter(mains == 1), by = c("admin" = "country"))
 
 # plot map
 ggplot(figure4B) +
-  geom_sf(aes(fill = percent_journals), color = "grey", size = 0.1) +
+  geom_sf(aes(fill = percent_articles), color = "grey", size = 0.1) +
   scale_fill_gradient(low = "#E6F598", high = "#3288BD", na.value = "grey80",
                       #limits = c(0, 86),
-                      name = "% of mainstream local journals") +
+                      name = "% of articles in mainstream local journals") +
   labs(x = NULL, y = NULL) +
   theme_minimal() +
   theme(legend.position = "bottom",
@@ -1141,19 +1143,20 @@ ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig4B.png", width = 12, heig
 
 
 ## FIGURE 5
-# identify the local journals where each country has published during 2023, and compute the percentages of non-English local journals
-figure5A <- openalex_articles_2023 %>% mutate(journal_id = as.character(journal_id)) %>%
+# identify the local journals where each country has published during 2023, and compute the percentages of articles in non-English local journals
+figure5A <- openalex_articles_2023 %>% mutate(OA_source_ID = as.character(OA_source_ID)) %>%
                                        inner_join(local_journals_territory %>%
                                                     mutate(OA_source_ID = as.character(OA_source_ID)) %>%
-                                                    select(OA_source_ID, langs),
-                                                  by = c("journal_id" = "OA_source_ID")) %>%
-                                       distinct(country, journal_id, langs) %>%
-                                       add_count(country, langs, name = "n_journals") %>%
-                                       add_count(country, name = "total_journals") %>%
-                                       distinct(country, langs, n_journals, total_journals) %>%
-                                       mutate(percent_journals = 100 * n_journals / total_journals,
+                                                    select(OA_source_ID, langs), by = "OA_source_ID") %>%
+                                       group_by(country, langs) %>%
+                                       summarise(n_articles = sum(article_count, na.rm = TRUE),
+                                                 .groups = "drop") %>%
+                                       group_by(country) %>%
+                                       mutate(total_articles = sum(n_articles),
+                                              percent_articles = 100 * n_articles / total_articles,
                                               langs_label = ifelse(langs == 1, "English local journals",
-                                                                   "Non-English local journals"))
+                                                                   "Non-English local journals")) %>%
+                                       ungroup()
 
 # merge only non-English cases using full country names
 figure5A <- world %>% left_join(figure5A %>% filter(langs == 0), by = c("admin" = "country"))
@@ -1166,26 +1169,28 @@ figure5A <- figure5A %>% mutate(region_custom = case_when(region_un %in% c("Afri
                                                           TRUE ~ NA_character_))
 
 # convert to long format
-figure5A <- figure5A %>% select(name_long, region_custom, percent_journals, langs_label) %>%
-                         rename(percent = percent_journals) %>%
+figure5A <- figure5A %>% select(name_long, region_custom, percent_articles, langs_label) %>%
+                         rename(percent = percent_articles) %>%
                          mutate(metric = "Non-English")
 
-# identify the local journals where each country has published during 2023, and compute the percentages of open-access local journals
-figure5B <- openalex_articles_2023 %>% mutate(journal_id = as.character(journal_id)) %>%
+# identify the local journals where each country has published during 2023, and compute the percentages of articles in open-access local journals
+figure5B <- openalex_articles_2023 %>% mutate(OA_source_ID = as.character(OA_source_ID)) %>%
                                        inner_join(local_journals_territory %>%
-                                                    mutate(OA_source_ID = as.character(OA_source_ID),
-                                                           is_OA = map_lgl(open_access, ~ {if (is.null(.x)) return(FALSE)
-                                                             .x$SCOP_open_access == "Unpaywall Open Access" |
-                                                               .x$DOAJ_open_access == "Yes" |
-                                                               .x$OA_open_access == TRUE})) %>%
-                                                    select(OA_source_ID, is_OA), by = c("journal_id" = "OA_source_ID")) %>%
-                                       distinct(country, journal_id, is_OA) %>%
-                                       add_count(country, is_OA, name = "n_journals") %>%
-                                       add_count(country, name = "total_journals") %>%
-                                       distinct(country, is_OA, n_journals, total_journals) %>%
-                                       mutate(percent_journals = 100 * n_journals / total_journals,
+                                       mutate(OA_source_ID = as.character(OA_source_ID),
+                                              is_OA = map_lgl(open_access, ~ {if (is.null(.x)) return(FALSE)
+                                                .x$SCOP_open_access == "Unpaywall Open Access" |
+                                                  .x$DOAJ_open_access == "Yes" |
+                                                  .x$OA_open_access == TRUE})) %>%
+                                       select(OA_source_ID, is_OA), by = "OA_source_ID") %>%
+                                       group_by(country, is_OA) %>%
+                                       summarise(n_articles = sum(article_count, na.rm = TRUE),
+                                                 .groups = "drop") %>%
+                                       group_by(country) %>%
+                                       mutate(total_articles = sum(n_articles),
+                                              percent_articles = 100 * n_articles / total_articles,
                                               OA_label = ifelse(is_OA, "Open-access local journals",
-                                                                "Closed-access local journals"))
+                                                                "Closed-access local journals")) %>%
+                                       ungroup()
 
 # merge only open-access cases using full country names
 figure5B <- world %>% left_join(figure5B %>% filter(is_OA == TRUE), by = c("admin" = "country"))
@@ -1198,8 +1203,8 @@ figure5B <- figure5B %>% mutate(region_custom = case_when(region_un %in% c("Afri
                                                           TRUE ~ NA_character_))
 
 # convert to long format
-figure5B <- figure5B %>% select(name_long, region_custom, percent_journals, OA_label) %>%
-                         rename(percent = percent_journals) %>%
+figure5B <- figure5B %>% select(name_long, region_custom, percent_articles, OA_label) %>%
+                         rename(percent = percent_articles) %>%
                          mutate(metric = "Open Access")
 
 # combine both figure5 A & B into a single dataframe for plotting purposes
@@ -1217,7 +1222,7 @@ figure5 %>% filter(!is.na(percent), !is.na(region_custom)) %>%
   facet_wrap(~ metric, ncol = 2) +
   coord_cartesian(xlim = c(0, 100)) +
   labs(y = "Region",
-       x = "% of mainstream local journals") +
+       x = "% of articles in mainstream local journals") +
   scale_y_discrete(labels = c("South America", "Central America\n& the Caribbean", "North America",
                               "Europe", "Africa", "Asia", "Oceania")) +
   scale_fill_manual(values = c("South America" = "#FEE08B", "Central America & the Caribbean" = "#FDAE61", "North America" = "#F46D43",
@@ -1278,10 +1283,14 @@ ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig6.png", width = 6, height
 
 ## FIGURE 7A
 # sum the number of articles per country to know their 2023 publications total within local journals, and compute the proportion of articles in local journals with respect to all their 2023 publications
-figure7A <- openalex_articles_2023 %>% filter(journal_id %in% local_journals_producers$OA_source_ID) %>%
+figure7A <- openalex_articles_2023 %>% filter(OA_source_ID %in% local_journals_producers$OA_source_ID) %>%
                                        group_by(country) %>%
-                                       summarise(article_total = n(), .groups = "drop")
+                                       summarise(article_total = sum(article_count, na.rm = TRUE),
+                                       .groups = "drop")
 figure7A <- figure7A %>% mutate(article_percent = 100 * article_total / openalex_articles_2023_all$article_total[match(country, openalex_articles_2023_all$country)])
+
+# load world shapefile
+world <- ne_countries(scale = "medium", returnclass = "sf")
 
 # merge using full country names
 figure7A <- world %>% left_join(figure7A, by = c("admin" = "country"))
@@ -1290,7 +1299,7 @@ figure7A <- world %>% left_join(figure7A, by = c("admin" = "country"))
 ggplot(figure7A) +
   geom_sf(aes(fill = article_percent), color = "grey", size = 0.1) +
   scale_fill_gradient(low = "#E6F598", high = "#3288BD", na.value = "grey80",
-                      #limits = c(0, 45),
+                      #limits = c(0, 86),
                       name = "% of articles in local journals") +
   labs(x = NULL, y = NULL) +
   theme_minimal() +
@@ -1307,29 +1316,30 @@ ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig7A.png", width = 12, heig
 
 
 ## FIGURE 7B
-# identify the local journals where each country has published during 2023, and compute the percentages of mainstream and non-mainstream local journals, which are complementary
-figure7B <- openalex_articles_2023 %>% mutate(journal_id = as.character(journal_id)) %>%
+# identify the local journals where each country has published during 2023, and compute the percentages of articles in mainstream and non-mainstream local journals
+figure7B <- openalex_articles_2023 %>% mutate(OA_source_ID = as.character(OA_source_ID)) %>%
                                        inner_join(local_journals_producers %>%
-                                                    mutate(OA_source_ID = as.character(OA_source_ID)) %>%
-                                                    select(OA_source_ID, mains),
-                                                  by = c("journal_id" = "OA_source_ID")) %>%
-                                       distinct(country, journal_id, mains) %>%
-                                       add_count(country, mains, name = "n_journals") %>%
-                                       add_count(country, name = "total_journals") %>%
-                                       distinct(country, mains, n_journals, total_journals) %>%
-                                       mutate(percent_journals = 100 * n_journals / total_journals,
+                                       mutate(OA_source_ID = as.character(OA_source_ID)) %>%
+                                       select(OA_source_ID, mains), by = "OA_source_ID") %>%
+                                       group_by(country, mains) %>%
+                                       summarise(n_articles = sum(article_count, na.rm = TRUE),
+                                                 .groups = "drop") %>%
+                                       group_by(country) %>%
+                                       mutate(total_articles = sum(n_articles, na.rm = TRUE),
+                                              percent_articles = 100 * n_articles / total_articles,
                                               mains_label = ifelse(mains == 1, "Mainstream local journals",
-                                                                   "Non-mainstream local journals"))
+                                                                   "Non-mainstream local journals")) %>%
+                                       ungroup()
 
 # merge only mainstream cases using full country names
 figure7B <- world %>% left_join(figure7B %>% filter(mains == 1), by = c("admin" = "country"))
 
 # plot map
 ggplot(figure7B) +
-  geom_sf(aes(fill = percent_journals), color = "grey", size = 0.1) +
+  geom_sf(aes(fill = percent_articles), color = "grey", size = 0.1) +
   scale_fill_gradient(low = "#E6F598", high = "#3288BD", na.value = "grey80",
                       #limits = c(0, 86),
-                      name = "% of mainstream local journals") +
+                      name = "% of articles in mainstream local journals") +
   labs(x = NULL, y = NULL) +
   theme_minimal() +
   theme(legend.position = "bottom",
@@ -1344,20 +1354,21 @@ ggplot(figure7B) +
 ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig7B.png", width = 12, height = 6, dpi = 600)
 
 
-# FIGURE 8
-# identify the local journals where each country has published during 2023, and compute the percentages of non-English local journals
-figure8A <- openalex_articles_2023 %>% mutate(journal_id = as.character(journal_id)) %>%
+## FIGURE 8
+# identify the local journals where each country has published during 2023, and compute the percentages of articles in non-English local journals
+figure8A <- openalex_articles_2023 %>% mutate(OA_source_ID = as.character(OA_source_ID)) %>%
                                        inner_join(local_journals_producers %>%
-                                                    mutate(OA_source_ID = as.character(OA_source_ID)) %>%
-                                                    select(OA_source_ID, langs),
-                                                  by = c("journal_id" = "OA_source_ID")) %>%
-                                       distinct(country, journal_id, langs) %>%
-                                       add_count(country, langs, name = "n_journals") %>%
-                                       add_count(country, name = "total_journals") %>%
-                                       distinct(country, langs, n_journals, total_journals) %>%
-                                       mutate(percent_journals = 100 * n_journals / total_journals,
+                                       mutate(OA_source_ID = as.character(OA_source_ID)) %>%
+                                       select(OA_source_ID, langs), by = "OA_source_ID") %>%
+                                       group_by(country, langs) %>%
+                                       summarise(n_articles = sum(article_count, na.rm = TRUE),
+                                                 .groups = "drop") %>%
+                                       group_by(country) %>%
+                                       mutate(total_articles = sum(n_articles),
+                                              percent_articles = 100 * n_articles / total_articles,
                                               langs_label = ifelse(langs == 1, "English local journals",
-                                                                   "Non-English local journals"))
+                                                                   "Non-English local journals")) %>%
+                                       ungroup()
 
 # merge only non-English cases using full country names
 figure8A <- world %>% left_join(figure8A %>% filter(langs == 0), by = c("admin" = "country"))
@@ -1370,26 +1381,28 @@ figure8A <- figure8A %>% mutate(region_custom = case_when(region_un %in% c("Afri
                                                           TRUE ~ NA_character_))
 
 # convert to long format
-figure8A <- figure8A %>% select(name_long, region_custom, percent_journals, langs_label) %>%
-                         rename(percent = percent_journals) %>%
-                         mutate(metric = "Non-English")
+figure8A <- figure8A %>% select(name_long, region_custom, percent_articles, langs_label) %>%
+                                rename(percent = percent_articles) %>%
+                                mutate(metric = "Non-English")
 
-# identify the local journals where each country has published during 2023, and compute the percentages of open-access local journals
-figure8B <- openalex_articles_2023 %>% mutate(journal_id = as.character(journal_id)) %>%
+# identify the local journals where each country has published during 2023, and compute the percentages of articles in open-access local journals
+figure8B <- openalex_articles_2023 %>% mutate(OA_source_ID = as.character(OA_source_ID)) %>%
                                        inner_join(local_journals_producers %>%
                                        mutate(OA_source_ID = as.character(OA_source_ID),
                                               is_OA = map_lgl(open_access, ~ {if (is.null(.x)) return(FALSE)
                                                 .x$SCOP_open_access == "Unpaywall Open Access" |
                                                   .x$DOAJ_open_access == "Yes" |
                                                   .x$OA_open_access == TRUE})) %>%
-                                         select(OA_source_ID, is_OA), by = c("journal_id" = "OA_source_ID")) %>%
-                                       distinct(country, journal_id, is_OA) %>%
-                                       add_count(country, is_OA, name = "n_journals") %>%
-                                       add_count(country, name = "total_journals") %>%
-                                       distinct(country, is_OA, n_journals, total_journals) %>%
-                                       mutate(percent_journals = 100 * n_journals / total_journals,
+                                       select(OA_source_ID, is_OA), by = "OA_source_ID") %>%
+                                       group_by(country, is_OA) %>%
+                                       summarise(n_articles = sum(article_count, na.rm = TRUE),
+                                                 .groups = "drop") %>%
+                                       group_by(country) %>%
+                                       mutate(total_articles = sum(n_articles),
+                                              percent_articles = 100 * n_articles / total_articles,
                                               OA_label = ifelse(is_OA, "Open-access local journals",
-                                                                "Closed-access local journals"))
+                                                                "Closed-access local journals")) %>%
+                                       ungroup()
 
 # merge only open-access cases using full country names
 figure8B <- world %>% left_join(figure8B %>% filter(is_OA == TRUE), by = c("admin" = "country"))
@@ -1402,8 +1415,8 @@ figure8B <- figure8B %>% mutate(region_custom = case_when(region_un %in% c("Afri
                                                           TRUE ~ NA_character_))
 
 # convert to long format
-figure8B <- figure8B %>% select(name_long, region_custom, percent_journals, OA_label) %>%
-                         rename(percent = percent_journals) %>%
+figure8B <- figure8B %>% select(name_long, region_custom, percent_articles, OA_label) %>%
+                         rename(percent = percent_articles) %>%
                          mutate(metric = "Open Access")
 
 # combine both figure8 A & B into a single dataframe for plotting purposes
@@ -1421,7 +1434,7 @@ figure8 %>% filter(!is.na(percent), !is.na(region_custom)) %>%
   facet_wrap(~ metric, ncol = 2) +
   coord_cartesian(xlim = c(0, 100)) +
   labs(y = "Region",
-       x = "% of mainstream local journals") +
+       x = "% of articles in mainstream local journals") +
   scale_y_discrete(labels = c("South America", "Central America\n& the Caribbean", "North America",
                               "Europe", "Africa", "Asia", "Oceania")) +
   scale_fill_manual(values = c("South America" = "#FEE08B", "Central America & the Caribbean" = "#FDAE61", "North America" = "#F46D43",
@@ -1482,10 +1495,14 @@ ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig9.png", width = 6, height
 
 ## FIGURE 10A
 # sum the number of articles per country to know their 2023 publications total within local journals, and compute the proportion of articles in local journals with respect to all their 2023 publications
-figure10A <- openalex_articles_2023 %>% filter(journal_id %in% local_journals_recipients$OA_source_ID) %>%
-                                       group_by(country) %>%
-                                       summarise(article_total = n(), .groups = "drop")
+figure10A <- openalex_articles_2023 %>% filter(OA_source_ID %in% local_journals_recipients$OA_source_ID) %>%
+                                        group_by(country) %>%
+                                        summarise(article_total = sum(article_count, na.rm = TRUE),
+                                                  .groups = "drop")
 figure10A <- figure10A %>% mutate(article_percent = 100 * article_total / openalex_articles_2023_all$article_total[match(country, openalex_articles_2023_all$country)])
+
+# load world shapefile
+world <- ne_countries(scale = "medium", returnclass = "sf")
 
 # merge using full country names
 figure10A <- world %>% left_join(figure10A, by = c("admin" = "country"))
@@ -1494,7 +1511,7 @@ figure10A <- world %>% left_join(figure10A, by = c("admin" = "country"))
 ggplot(figure10A) +
   geom_sf(aes(fill = article_percent), color = "grey", size = 0.1) +
   scale_fill_gradient(low = "#E6F598", high = "#3288BD", na.value = "grey80",
-                      #limits = c(0, 35),
+                      #limits = c(0, 86),
                       name = "% of articles in local journals") +
   labs(x = NULL, y = NULL) +
   theme_minimal() +
@@ -1511,29 +1528,30 @@ ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig10A.png", width = 12, hei
 
 
 ## FIGURE 10B
-# identify the local journals where each country has published during 2023, and compute the percentages of mainstream and non-mainstream local journals, which are complementary
-figure10B <- openalex_articles_2023 %>% mutate(journal_id = as.character(journal_id)) %>%
-                                       inner_join(local_journals_recipients %>%
-                                                    mutate(OA_source_ID = as.character(OA_source_ID)) %>%
-                                                    select(OA_source_ID, mains),
-                                                  by = c("journal_id" = "OA_source_ID")) %>%
-                                       distinct(country, journal_id, mains) %>%
-                                       add_count(country, mains, name = "n_journals") %>%
-                                       add_count(country, name = "total_journals") %>%
-                                       distinct(country, mains, n_journals, total_journals) %>%
-                                       mutate(percent_journals = 100 * n_journals / total_journals,
-                                              mains_label = ifelse(mains == 1, "Mainstream local journals",
-                                                                   "Non-mainstream local journals"))
+# identify the local journals where each country has published during 2023, and compute the percentages of articles in mainstream and non-mainstream local journals
+figure10B <- openalex_articles_2023 %>% mutate(OA_source_ID = as.character(OA_source_ID)) %>%
+                                        inner_join(local_journals_recipients %>%
+                                        mutate(OA_source_ID = as.character(OA_source_ID)) %>%
+                                        select(OA_source_ID, mains), by = "OA_source_ID") %>%
+                                        group_by(country, mains) %>%
+                                        summarise(n_articles = sum(article_count, na.rm = TRUE),
+                                                  .groups = "drop") %>%
+                                        group_by(country) %>%
+                                        mutate(total_articles = sum(n_articles, na.rm = TRUE),
+                                               percent_articles = 100 * n_articles / total_articles,
+                                               mains_label = ifelse(mains == 1, "Mainstream local journals",
+                                                                    "Non-mainstream local journals")) %>%
+                                        ungroup()
 
 # merge only mainstream cases using full country names
 figure10B <- world %>% left_join(figure10B %>% filter(mains == 1), by = c("admin" = "country"))
 
 # plot map
 ggplot(figure10B) +
-  geom_sf(aes(fill = percent_journals), color = "grey", size = 0.1) +
+  geom_sf(aes(fill = percent_articles), color = "grey", size = 0.1) +
   scale_fill_gradient(low = "#E6F598", high = "#3288BD", na.value = "grey80",
                       #limits = c(0, 86),
-                      name = "% of mainstream local journals") +
+                      name = "% of articles in mainstream local journals") +
   labs(x = NULL, y = NULL) +
   theme_minimal() +
   theme(legend.position = "bottom",
@@ -1549,19 +1567,20 @@ ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig10B.png", width = 12, hei
 
 
 # FIGURE 11
-# identify the local journals where each country has published during 2023, and compute the percentages of non-English local journals
-figure11A <- openalex_articles_2023 %>% mutate(journal_id = as.character(journal_id)) %>%
+# identify the local journals where each country has published during 2023, and compute the percentages of articles in non-English local journals
+figure11A <- openalex_articles_2023 %>% mutate(OA_source_ID = as.character(OA_source_ID)) %>%
                                         inner_join(local_journals_recipients %>%
-                                                     mutate(OA_source_ID = as.character(OA_source_ID)) %>%
-                                                     select(OA_source_ID, langs),
-                                                   by = c("journal_id" = "OA_source_ID")) %>%
-                                        distinct(country, journal_id, langs) %>%
-                                        add_count(country, langs, name = "n_journals") %>%
-                                        add_count(country, name = "total_journals") %>%
-                                        distinct(country, langs, n_journals, total_journals) %>%
-                                        mutate(percent_journals = 100 * n_journals / total_journals,
+                                        mutate(OA_source_ID = as.character(OA_source_ID)) %>%
+                                        select(OA_source_ID, langs), by = "OA_source_ID") %>%
+                                        group_by(country, langs) %>%
+                                        summarise(n_articles = sum(article_count, na.rm = TRUE),
+                                                  .groups = "drop") %>%
+                                        group_by(country) %>%
+                                        mutate(total_articles = sum(n_articles),
+                                               percent_articles = 100 * n_articles / total_articles,
                                                langs_label = ifelse(langs == 1, "English local journals",
-                                                                    "Non-English local journals"))
+                                                                    "Non-English local journals")) %>%
+                                        ungroup()
 
 # merge only non-English cases using full country names
 figure11A <- world %>% left_join(figure11A %>% filter(langs == 0), by = c("admin" = "country"))
@@ -1574,26 +1593,28 @@ figure11A <- figure11A %>% mutate(region_custom = case_when(region_un %in% c("Af
                                                           TRUE ~ NA_character_))
 
 # convert to long format
-figure11A <- figure11A %>% select(name_long, region_custom, percent_journals, langs_label) %>%
-                           rename(percent = percent_journals) %>%
+figure11A <- figure11A %>% select(name_long, region_custom, percent_articles, langs_label) %>%
+                           rename(percent = percent_articles) %>%
                            mutate(metric = "Non-English")
 
-# identify the local journals where each country has published during 2023, and compute the percentages of open-access local journals
-figure11B <- openalex_articles_2023 %>% mutate(journal_id = as.character(journal_id)) %>%
+# identify the local journals where each country has published during 2023, and compute the percentages of articles in open-access local journals
+figure11B <- openalex_articles_2023 %>% mutate(OA_source_ID = as.character(OA_source_ID)) %>%
                                         inner_join(local_journals_recipients %>%
-                                                     mutate(OA_source_ID = as.character(OA_source_ID),
-                                                            is_OA = map_lgl(open_access, ~ {if (is.null(.x)) return(FALSE)
-                                                              .x$SCOP_open_access == "Unpaywall Open Access" |
-                                                                .x$DOAJ_open_access == "Yes" |
-                                                                .x$OA_open_access == TRUE})) %>%
-                                                     select(OA_source_ID, is_OA), by = c("journal_id" = "OA_source_ID")) %>%
-                                        distinct(country, journal_id, is_OA) %>%
-                                        add_count(country, is_OA, name = "n_journals") %>%
-                                        add_count(country, name = "total_journals") %>%
-                                        distinct(country, is_OA, n_journals, total_journals) %>%
-                                        mutate(percent_journals = 100 * n_journals / total_journals,
+                                        mutate(OA_source_ID = as.character(OA_source_ID),
+                                               is_OA = map_lgl(open_access, ~ {if (is.null(.x)) return(FALSE)
+                                                 .x$SCOP_open_access == "Unpaywall Open Access" |
+                                                   .x$DOAJ_open_access == "Yes" |
+                                                   .x$OA_open_access == TRUE})) %>%
+                                        select(OA_source_ID, is_OA), by = "OA_source_ID") %>%
+                                        group_by(country, is_OA) %>%
+                                        summarise(n_articles = sum(article_count, na.rm = TRUE),
+                                                  .groups = "drop") %>%
+                                        group_by(country) %>%
+                                        mutate(total_articles = sum(n_articles),
+                                               percent_articles = 100 * n_articles / total_articles,
                                                OA_label = ifelse(is_OA, "Open-access local journals",
-                                                                 "Closed-access local journals"))
+                                                                 "Closed-access local journals")) %>%
+                                        ungroup()
 
 # merge only open-access cases using full country names
 figure11B <- world %>% left_join(figure11B %>% filter(is_OA == TRUE), by = c("admin" = "country"))
@@ -1606,8 +1627,8 @@ figure11B <- figure11B %>% mutate(region_custom = case_when(region_un %in% c("Af
                                                           TRUE ~ NA_character_))
 
 # convert to long format
-figure11B <- figure11B %>% select(name_long, region_custom, percent_journals, OA_label) %>%
-                           rename(percent = percent_journals) %>%
+figure11B <- figure11B %>% select(name_long, region_custom, percent_articles, OA_label) %>%
+                           rename(percent = percent_articles) %>%
                            mutate(metric = "Open Access")
 
 # combine both figure11 A & B into a single dataframe for plotting purposes
@@ -1615,8 +1636,7 @@ figure11 <- bind_rows(figure11A %>% rename(label = langs_label),
                       figure11B %>% rename(label = OA_label))
 
 figure11 <- figure11 %>% mutate(region_custom = case_when(name_long == "Mexico" ~ "North America", TRUE ~ region_custom))
-figure11$region_custom <- factor(figure11$region_custom, levels = c("South America", "Central America & the Caribbean", "North America",
-                                                                    "Europe", "Africa", "Asia", "Oceania"))
+figure11$region_custom <- factor(figure11$region_custom, levels = c("South America", "Central America & the Caribbean", "North America", "Europe", "Africa", "Asia", "Oceania"))
 
 # plot boxplot
 figure11 %>% filter(!is.na(percent), !is.na(region_custom)) %>%
@@ -1626,7 +1646,7 @@ figure11 %>% filter(!is.na(percent), !is.na(region_custom)) %>%
   facet_wrap(~ metric, ncol = 2) +
   coord_cartesian(xlim = c(0, 100)) +
   labs(y = "Region",
-       x = "% of mainstream local journals") +
+       x = "% of articles in mainstream local journals") +
   scale_y_discrete(labels = c("South America", "Central America\n& the Caribbean", "North America",
                               "Europe", "Africa", "Asia", "Oceania")) +
   scale_fill_manual(values = c("South America" = "#FEE08B", "Central America & the Caribbean" = "#FDAE61", "North America" = "#F46D43",
