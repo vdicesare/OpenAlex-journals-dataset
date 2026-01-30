@@ -986,36 +986,36 @@ table4 <- table4 %>% pivot_longer(cols = c(local_territory, local_producers, loc
 ### TERRITORY RESULTS
 local_journals_territory <- ddff_megamerge %>% filter(local_territory == "local")
 
-## FIGURE 3
-figure3 <- local_journals_territory %>% mutate(OA_domains = strsplit(OA_domains, ";")) %>%
-                                        unnest(OA_domains) %>%
-                                        mutate(OA_domains = trimws(OA_domains)) %>%
-                                        filter(!is.na(OA_domains) & OA_domains != "") %>%
-                                        mutate(is_OA = map_lgl(open_access, ~ {if (is.null(.x)) return(FALSE)
-                                          .x$SCOP_open_access == "Unpaywall Open Access" |
-                                            .x$DOAJ_open_access == "Yes" |
-                                            .x$OA_open_access == TRUE}),
-                                          is_non_english = langs == 0,
-                                          is_overall = TRUE)
+## FIGURE 3A
+figure3A <- local_journals_territory %>% mutate(OA_domains = strsplit(OA_domains, ";")) %>%
+                                         unnest(OA_domains) %>%
+                                         mutate(OA_domains = trimws(OA_domains)) %>%
+                                         filter(!is.na(OA_domains) & OA_domains != "") %>%
+                                         mutate(is_OA = map_lgl(open_access, ~ {if (is.null(.x)) return(FALSE)
+                                           .x$SCOP_open_access == "Unpaywall Open Access" |
+                                             .x$DOAJ_open_access == "Yes" |
+                                             .x$OA_open_access == TRUE}),
+                                           is_non_english = langs == 0,
+                                           is_overall = TRUE)
 
-figure3 <- figure3 %>% select(OA_ID, OA_domains, mains, is_OA, is_non_english, is_overall) %>%
-                       distinct() %>%
-                       pivot_longer(cols = c(is_OA, is_non_english, is_overall), names_to = "group", values_to = "value") %>%
-                       filter(value == TRUE) %>%
-                       mutate(group = recode(group, "is_OA" = "Open Access", "is_non_english" = "Non-English", "is_overall" = "Overall"))
+figure3A <- figure3A %>% select(OA_ID, OA_domains, mains, is_OA, is_non_english, is_overall) %>%
+                         distinct() %>%
+                         pivot_longer(cols = c(is_OA, is_non_english, is_overall), names_to = "group", values_to = "value") %>%
+                         filter(value == TRUE) %>%
+                         mutate(group = recode(group, "is_OA" = "Open Access", "is_non_english" = "Non-English", "is_overall" = "Overall"))
 
-figure3 <- figure3 %>% filter(!OA_ID %in% c("OA18498", "OA38322", "OA39390"))
+figure3A <- figure3A %>% filter(!OA_ID %in% c("OA18498", "OA38322", "OA39390"))
 
-figure3 <- figure3 %>% group_by(group, OA_domains, mains) %>%
-                       summarise(n = n(), .groups = "drop") %>%
-                       group_by(group, OA_domains) %>%
-                       mutate(perc = n / sum(n) * 100)
+figure3A <- figure3A %>% group_by(group, OA_domains, mains) %>%
+                         summarise(n = n(), .groups = "drop") %>%
+                         group_by(group, OA_domains) %>%
+                         mutate(perc = n / sum(n) * 100)
 
-figure3 <- figure3 %>% mutate(mains_label = factor(mains, levels = c(0, 1), labels = c("Non-mainstream", "Mainstream")))
-figure3 <- figure3 %>% mutate(OA_domains = factor(OA_domains, levels = c("Social Sciences", "Physical Sciences", "Life Sciences", "Health Sciences")))
-figure3 <- figure3 %>% mutate(group = factor(group, levels = c("Overall", "Non-English", "Open Access")))
+figure3A <- figure3A %>% mutate(mains_label = factor(mains, levels = c(0, 1), labels = c("Non-mainstream", "Mainstream")))
+figure3A <- figure3A %>% mutate(OA_domains = factor(OA_domains, levels = c("Social Sciences", "Physical Sciences", "Life Sciences", "Health Sciences")))
+figure3A <- figure3A %>% mutate(group = factor(group, levels = c("Overall", "Non-English", "Open Access")))
 
-ggplot(figure3, aes(x = perc, y = OA_domains, fill = mains_label)) +
+ggplot(figure3A, aes(x = perc, y = OA_domains, fill = mains_label)) +
   geom_col(position = position_dodge(width = 0.6), width = 0.6) +
   facet_wrap(~ group, ncol = 3) +
   coord_cartesian(xlim = c(0, 100)) +
@@ -1025,7 +1025,58 @@ ggplot(figure3, aes(x = perc, y = OA_domains, fill = mains_label)) +
   theme_minimal() +
   theme(strip.text = element_text(size = 12, face = "bold"), axis.text.y = element_text(size = 7),
         legend.position = "bottom", legend.direction = "horizontal", legend.key.size = unit(0.4, "cm"), legend.text = element_text(size = 7))
-ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig3.png", width = 6, height = 3, dpi = 300)
+ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig3A.png", width = 6, height = 3, dpi = 300)
+
+
+## FIGURE 3B
+figure3B <- openalex_articles_2023 %>% mutate(OA_source_ID = as.character(OA_source_ID)) %>%
+                                       inner_join(local_journals_territory %>%
+                                                    mutate(OA_source_ID = as.character(OA_source_ID)) %>%
+                                                    select(OA_source_ID, mains), by = "OA_source_ID") %>%
+                                       distinct(country, OA_source_ID, mains) %>%
+                                       count(country, mains, name = "n_journals") %>%
+                                       group_by(country) %>%
+                                       mutate(total_journals = sum(n_journals),
+                                              percent_journals = 100 * n_journals / total_journals,
+                                              mains_label = ifelse(mains == 1, "Mainstream local journals",
+                                                                   "Non-mainstream local journals")) %>%
+                                       ungroup()
+
+# merge only mainstream cases using full country names
+figure3B <- world %>% left_join(figure3B %>% filter(mains == 1), by = c("admin" = "country"))
+
+# group countries at the region level
+figure3B <- figure3B %>% mutate(region_custom = case_when(region_un %in% c("Africa", "Asia", "Europe", "Oceania") ~ region_un,
+                                                          region_un == "Americas" & subregion == "Northern America" ~ "North America",
+                                                          region_un == "Americas" & subregion %in% c("Central America", "Caribbean") ~ "Central America & the Caribbean",
+                                                          region_un == "Americas" & subregion == "South America" ~ "South America",
+                                                          TRUE ~ NA_character_))
+
+# convert to long format
+figure3B <- figure3B %>% select(name_long, region_custom, percent_journals, mains_label) %>%
+                         rename(percent = percent_journals)
+
+figure3B <- figure3B %>% mutate(region_custom = case_when(name_long == "Mexico" ~ "North America", TRUE ~ region_custom))
+figure3B$region_custom <- factor(figure3B$region_custom, levels = c("South America", "Central America & the Caribbean", "North America", "Europe", "Africa", "Asia", "Oceania"))
+
+# plot boxplot
+figure3B %>% filter(!is.na(percent), !is.na(region_custom)) %>%
+  ggplot(aes(y = region_custom, x = percent, fill = region_custom)) +
+  geom_boxplot(width = 0.6, outlier.shape = NA) +
+  geom_jitter(height = 0.15, size = 1.2, alpha = 0.6, color = "grey50") +
+  coord_cartesian(xlim = c(0, 100)) +
+  labs(y = "Region",
+       x = "% of mainstream local journals") +
+  scale_y_discrete(labels = c("South America", "Central America\n& the Caribbean", "North America",
+                              "Europe", "Africa", "Asia", "Oceania")) +
+  scale_fill_manual(values = c("South America" = "#FEE08B", "Central America & the Caribbean" = "#FDAE61", "North America" = "#F46D43",
+                               "Europe" = "#D53E4F", "Africa" = "#3288BD", "Asia" = "#66C2A5", "Oceania" = "#E6F598")) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(size = 13),
+        axis.text.y = element_text(size = 13),
+        axis.title = element_text(size = 14),
+        legend.position = "none")
+ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig3B.png", width = 9, height = 6, dpi = 600)
 
 
 ## FIGURE 4A
@@ -1239,36 +1290,36 @@ ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig5.png", width = 9, height
 ### PRODUCERS RESULTS
 local_journals_producers <- ddff_megamerge %>% filter(local_producers == "local")
 
-## FIGURE 6
-figure6 <- local_journals_producers %>% mutate(OA_domains = strsplit(OA_domains, ";")) %>%
-                                        unnest(OA_domains) %>%
-                                        mutate(OA_domains = trimws(OA_domains)) %>%
-                                        filter(!is.na(OA_domains) & OA_domains != "") %>%
-                                        mutate(is_OA = map_lgl(open_access, ~ {if (is.null(.x)) return(FALSE)
-                                          .x$SCOP_open_access == "Unpaywall Open Access" |
-                                            .x$DOAJ_open_access == "Yes" |
-                                            .x$OA_open_access == TRUE}),
-                                          is_non_english = langs == 0,
-                                          is_overall = TRUE)
+## FIGURE 6A
+figure6A <- local_journals_producers %>% mutate(OA_domains = strsplit(OA_domains, ";")) %>%
+                                         unnest(OA_domains) %>%
+                                         mutate(OA_domains = trimws(OA_domains)) %>%
+                                         filter(!is.na(OA_domains) & OA_domains != "") %>%
+                                         mutate(is_OA = map_lgl(open_access, ~ {if (is.null(.x)) return(FALSE)
+                                           .x$SCOP_open_access == "Unpaywall Open Access" |
+                                             .x$DOAJ_open_access == "Yes" |
+                                             .x$OA_open_access == TRUE}),
+                                           is_non_english = langs == 0,
+                                           is_overall = TRUE)
 
-figure6 <- figure6 %>% select(OA_ID, OA_domains, mains, is_OA, is_non_english, is_overall) %>%
-                       distinct() %>%
-                       pivot_longer(cols = c(is_OA, is_non_english, is_overall), names_to = "group", values_to = "value") %>%
-                       filter(value == TRUE) %>%
-                       mutate(group = recode(group, "is_OA" = "Open Access", "is_non_english" = "Non-English", "is_overall" = "Overall"))
+figure6A <- figure6A %>% select(OA_ID, OA_domains, mains, is_OA, is_non_english, is_overall) %>%
+                         distinct() %>%
+                         pivot_longer(cols = c(is_OA, is_non_english, is_overall), names_to = "group", values_to = "value") %>%
+                         filter(value == TRUE) %>%
+                         mutate(group = recode(group, "is_OA" = "Open Access", "is_non_english" = "Non-English", "is_overall" = "Overall"))
 
-figure6 <- figure6 %>% filter(!is.na(OA_domains) & OA_domains != "" & OA_domains != "NA")
+figure6A <- figure6A %>% filter(!is.na(OA_domains) & OA_domains != "" & OA_domains != "NA")
 
-figure6 <- figure6 %>% group_by(group, OA_domains, mains) %>%
-                       summarise(n = n(), .groups = "drop") %>%
-                       group_by(group, OA_domains) %>%
-                       mutate(perc = n / sum(n) * 100)
+figure6A <- figure6A %>% group_by(group, OA_domains, mains) %>%
+                         summarise(n = n(), .groups = "drop") %>%
+                         group_by(group, OA_domains) %>%
+                         mutate(perc = n / sum(n) * 100)
 
-figure6 <- figure6 %>% mutate(mains_label = factor(mains, levels = c(0, 1), labels = c("Non-mainstream", "Mainstream")))
-figure6 <- figure6 %>% mutate(OA_domains = factor(OA_domains, levels = c("Social Sciences", "Physical Sciences", "Life Sciences", "Health Sciences")))
-figure6 <- figure6 %>% mutate(group = factor(group, levels = c("Overall", "Non-English", "Open Access")))
+figure6A <- figure6A %>% mutate(mains_label = factor(mains, levels = c(0, 1), labels = c("Non-mainstream", "Mainstream")))
+figure6A <- figure6A %>% mutate(OA_domains = factor(OA_domains, levels = c("Social Sciences", "Physical Sciences", "Life Sciences", "Health Sciences")))
+figure6A <- figure6A %>% mutate(group = factor(group, levels = c("Overall", "Non-English", "Open Access")))
 
-ggplot(figure6, aes(x = perc, y = OA_domains, fill = mains_label)) +
+ggplot(figure6A, aes(x = perc, y = OA_domains, fill = mains_label)) +
   geom_col(position = position_dodge(width = 0.6), width = 0.6) +
   facet_wrap(~ group, ncol = 3) +
   coord_cartesian(xlim = c(0, 100)) +
@@ -1278,7 +1329,58 @@ ggplot(figure6, aes(x = perc, y = OA_domains, fill = mains_label)) +
   theme_minimal() +
   theme(strip.text = element_text(size = 12, face = "bold"), axis.text.y = element_text(size = 7),
         legend.position = "bottom", legend.direction = "horizontal", legend.key.size = unit(0.4, "cm"), legend.text = element_text(size = 7))
-ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig6.png", width = 6, height = 3, dpi = 300)
+ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig6A.png", width = 6, height = 3, dpi = 300)
+
+
+## FIGURE 6B
+figure6B <- openalex_articles_2023 %>% mutate(OA_source_ID = as.character(OA_source_ID)) %>%
+                                       inner_join(local_journals_producers %>%
+                                       mutate(OA_source_ID = as.character(OA_source_ID)) %>%
+                                       select(OA_source_ID, mains), by = "OA_source_ID") %>%
+                                       distinct(country, OA_source_ID, mains) %>%
+                                       count(country, mains, name = "n_journals") %>%
+                                       group_by(country) %>%
+                                       mutate(total_journals = sum(n_journals),
+                                              percent_journals = 100 * n_journals / total_journals,
+                                              mains_label = ifelse(mains == 1, "Mainstream local journals",
+                                                                   "Non-mainstream local journals")) %>%
+                                       ungroup()
+
+# merge only mainstream cases using full country names
+figure6B <- world %>% left_join(figure6B %>% filter(mains == 1), by = c("admin" = "country"))
+
+# group countries at the region level
+figure6B <- figure6B %>% mutate(region_custom = case_when(region_un %in% c("Africa", "Asia", "Europe", "Oceania") ~ region_un,
+                                                          region_un == "Americas" & subregion == "Northern America" ~ "North America",
+                                                          region_un == "Americas" & subregion %in% c("Central America", "Caribbean") ~ "Central America & the Caribbean",
+                                                          region_un == "Americas" & subregion == "South America" ~ "South America",
+                                                          TRUE ~ NA_character_))
+
+# convert to long format
+figure6B <- figure6B %>% select(name_long, region_custom, percent_journals, mains_label) %>%
+                         rename(percent = percent_journals)
+
+figure6B <- figure6B %>% mutate(region_custom = case_when(name_long == "Mexico" ~ "North America", TRUE ~ region_custom))
+figure6B$region_custom <- factor(figure6B$region_custom, levels = c("South America", "Central America & the Caribbean", "North America", "Europe", "Africa", "Asia", "Oceania"))
+
+# plot boxplot
+figure6B %>% filter(!is.na(percent), !is.na(region_custom)) %>%
+  ggplot(aes(y = region_custom, x = percent, fill = region_custom)) +
+  geom_boxplot(width = 0.6, outlier.shape = NA) +
+  geom_jitter(height = 0.15, size = 1.2, alpha = 0.6, color = "grey50") +
+  coord_cartesian(xlim = c(0, 100)) +
+  labs(y = "Region",
+       x = "% of mainstream local journals") +
+  scale_y_discrete(labels = c("South America", "Central America\n& the Caribbean", "North America",
+                              "Europe", "Africa", "Asia", "Oceania")) +
+  scale_fill_manual(values = c("South America" = "#FEE08B", "Central America & the Caribbean" = "#FDAE61", "North America" = "#F46D43",
+                               "Europe" = "#D53E4F", "Africa" = "#3288BD", "Asia" = "#66C2A5", "Oceania" = "#E6F598")) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(size = 13),
+        axis.text.y = element_text(size = 13),
+        axis.title = element_text(size = 14),
+        legend.position = "none")
+ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig6B.png", width = 9, height = 6, dpi = 600)
 
 
 ## FIGURE 7A
@@ -1451,36 +1553,36 @@ ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig8.png", width = 9, height
 ### RECIPIENTS RESULTS
 local_journals_recipients <- ddff_megamerge %>% filter(local_recipients == "local")
 
-## FIGURE 9
-figure9 <- local_journals_recipients %>% mutate(OA_domains = strsplit(OA_domains, ";")) %>%
-                                         unnest(OA_domains) %>%
-                                         mutate(OA_domains = trimws(OA_domains)) %>%
-                                         filter(!is.na(OA_domains) & OA_domains != "") %>%
-                                         mutate(is_OA = map_lgl(open_access, ~ {if (is.null(.x)) return(FALSE)
-                                           .x$SCOP_open_access == "Unpaywall Open Access" |
-                                             .x$DOAJ_open_access == "Yes" |
-                                             .x$OA_open_access == TRUE}),
-                                           is_non_english = langs == 0,
-                                           is_overall = TRUE)
+## FIGURE 9A
+figure9A <- local_journals_recipients %>% mutate(OA_domains = strsplit(OA_domains, ";")) %>%
+                                          unnest(OA_domains) %>%
+                                          mutate(OA_domains = trimws(OA_domains)) %>%
+                                          filter(!is.na(OA_domains) & OA_domains != "") %>%
+                                          mutate(is_OA = map_lgl(open_access, ~ {if (is.null(.x)) return(FALSE)
+                                            .x$SCOP_open_access == "Unpaywall Open Access" |
+                                              .x$DOAJ_open_access == "Yes" |
+                                              .x$OA_open_access == TRUE}),
+                                            is_non_english = langs == 0,
+                                            is_overall = TRUE)
 
-figure9 <- figure9 %>% select(OA_ID, OA_domains, mains, is_OA, is_non_english, is_overall) %>%
-                       distinct() %>%
-                       pivot_longer(cols = c(is_OA, is_non_english, is_overall), names_to = "group", values_to = "value") %>%
-                       filter(value == TRUE) %>%
-                       mutate(group = recode(group, "is_OA" = "Open Access", "is_non_english" = "Non-English", "is_overall" = "Overall"))
+figure9A <- figure9A %>% select(OA_ID, OA_domains, mains, is_OA, is_non_english, is_overall) %>%
+                         distinct() %>%
+                         pivot_longer(cols = c(is_OA, is_non_english, is_overall), names_to = "group", values_to = "value") %>%
+                         filter(value == TRUE) %>%
+                         mutate(group = recode(group, "is_OA" = "Open Access", "is_non_english" = "Non-English", "is_overall" = "Overall"))
 
-figure9 <- figure9 %>% filter(!is.na(OA_domains) & OA_domains != "" & OA_domains != "NA")
+figure9A <- figure9A %>% filter(!is.na(OA_domains) & OA_domains != "" & OA_domains != "NA")
 
-figure9 <- figure9 %>% group_by(group, OA_domains, mains) %>%
-                       summarise(n = n(), .groups = "drop") %>%
-                       group_by(group, OA_domains) %>%
-                       mutate(perc = n / sum(n) * 100)
+figure9A <- figure9A %>% group_by(group, OA_domains, mains) %>%
+                         summarise(n = n(), .groups = "drop") %>%
+                         group_by(group, OA_domains) %>%
+                         mutate(perc = n / sum(n) * 100)
 
-figure9 <- figure9 %>% mutate(mains_label = factor(mains, levels = c(0, 1), labels = c("Non-mainstream", "Mainstream")))
-figure9 <- figure9 %>% mutate(OA_domains = factor(OA_domains, levels = c("Social Sciences", "Physical Sciences", "Life Sciences", "Health Sciences")))
-figure9 <- figure9 %>% mutate(group = factor(group, levels = c("Overall", "Non-English", "Open Access")))
+figure9A <- figure9A %>% mutate(mains_label = factor(mains, levels = c(0, 1), labels = c("Non-mainstream", "Mainstream")))
+figure9A <- figure9A %>% mutate(OA_domains = factor(OA_domains, levels = c("Social Sciences", "Physical Sciences", "Life Sciences", "Health Sciences")))
+figure9A <- figure9A %>% mutate(group = factor(group, levels = c("Overall", "Non-English", "Open Access")))
 
-ggplot(figure9, aes(x = perc, y = OA_domains, fill = mains_label)) +
+ggplot(figure9A, aes(x = perc, y = OA_domains, fill = mains_label)) +
   geom_col(position = position_dodge(width = 0.6), width = 0.6) +
   facet_wrap(~ group, ncol = 3) +
   coord_cartesian(xlim = c(0, 100)) +
@@ -1490,7 +1592,58 @@ ggplot(figure9, aes(x = perc, y = OA_domains, fill = mains_label)) +
   theme_minimal() +
   theme(strip.text = element_text(size = 12, face = "bold"), axis.text.y = element_text(size = 7),
         legend.position = "bottom", legend.direction = "horizontal", legend.key.size = unit(0.4, "cm"), legend.text = element_text(size = 7))
-ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig9.png", width = 6, height = 3, dpi = 300)
+ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig9A.png", width = 6, height = 3, dpi = 300)
+
+
+## FIGURE 9B
+figure9B <- openalex_articles_2023 %>% mutate(OA_source_ID = as.character(OA_source_ID)) %>%
+                                       inner_join(local_journals_recipients %>%
+                                       mutate(OA_source_ID = as.character(OA_source_ID)) %>%
+                                       select(OA_source_ID, mains), by = "OA_source_ID") %>%
+                                       distinct(country, OA_source_ID, mains) %>%
+                                       count(country, mains, name = "n_journals") %>%
+                                       group_by(country) %>%
+                                       mutate(total_journals = sum(n_journals),
+                                       percent_journals = 100 * n_journals / total_journals,
+                                       mains_label = ifelse(mains == 1, "Mainstream local journals",
+                                                            "Non-mainstream local journals")) %>%
+                                       ungroup()
+
+# merge only mainstream cases using full country names
+figure9B <- world %>% left_join(figure9B %>% filter(mains == 1), by = c("admin" = "country"))
+
+# group countries at the region level
+figure9B <- figure9B %>% mutate(region_custom = case_when(region_un %in% c("Africa", "Asia", "Europe", "Oceania") ~ region_un,
+                                                          region_un == "Americas" & subregion == "Northern America" ~ "North America",
+                                                          region_un == "Americas" & subregion %in% c("Central America", "Caribbean") ~ "Central America & the Caribbean",
+                                                          region_un == "Americas" & subregion == "South America" ~ "South America",
+                                                          TRUE ~ NA_character_))
+
+# convert to long format
+figure9B <- figure9B %>% select(name_long, region_custom, percent_journals, mains_label) %>%
+                         rename(percent = percent_journals)
+
+figure9B <- figure9B %>% mutate(region_custom = case_when(name_long == "Mexico" ~ "North America", TRUE ~ region_custom))
+figure9B$region_custom <- factor(figure9B$region_custom, levels = c("South America", "Central America & the Caribbean", "North America", "Europe", "Africa", "Asia", "Oceania"))
+
+# plot boxplot
+figure9B %>% filter(!is.na(percent), !is.na(region_custom)) %>%
+  ggplot(aes(y = region_custom, x = percent, fill = region_custom)) +
+  geom_boxplot(width = 0.6, outlier.shape = NA) +
+  geom_jitter(height = 0.15, size = 1.2, alpha = 0.6, color = "grey50") +
+  coord_cartesian(xlim = c(0, 100)) +
+  labs(y = "Region",
+       x = "% of mainstream local journals") +
+  scale_y_discrete(labels = c("South America", "Central America\n& the Caribbean", "North America",
+                              "Europe", "Africa", "Asia", "Oceania")) +
+  scale_fill_manual(values = c("South America" = "#FEE08B", "Central America & the Caribbean" = "#FDAE61", "North America" = "#F46D43",
+                               "Europe" = "#D53E4F", "Africa" = "#3288BD", "Asia" = "#66C2A5", "Oceania" = "#E6F598")) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(size = 13),
+        axis.text.y = element_text(size = 13),
+        axis.title = element_text(size = 14),
+        legend.position = "none")
+ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig9B.png", width = 9, height = 6, dpi = 600)
 
 
 ## FIGURE 10A
