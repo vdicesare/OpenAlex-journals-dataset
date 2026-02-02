@@ -1057,7 +1057,8 @@ figure3B <- figure3B %>% select(name_long, region_custom, percent_journals, main
                          rename(percent = percent_journals)
 
 figure3B <- figure3B %>% mutate(region_custom = case_when(name_long == "Mexico" ~ "North America", TRUE ~ region_custom))
-figure3B$region_custom <- factor(figure3B$region_custom, levels = c("Africa", "South America", "Asia", "Central America & the Caribbean", "North America", "Europe", "Oceania"))
+figure3B <- figure3B %>% mutate(region_custom = recode(region_custom, "Central America & the Caribbean" = "Central America\n& the Caribbean"),
+                                region_custom = factor(region_custom, levels = c("Africa", "South America", "Asia", "Central America\n& the Caribbean", "North America", "Europe", "Oceania")))
 
 # plot boxplot
 figure3B %>% filter(!is.na(percent), !is.na(region_custom)) %>%
@@ -1067,7 +1068,7 @@ figure3B %>% filter(!is.na(percent), !is.na(region_custom)) %>%
   coord_cartesian(xlim = c(0, 100)) +
   labs(y = "Region",
        x = "% of mainstream local journals") +
-  scale_fill_manual(values = c("South America" = "#FEE08B", "Central America & the Caribbean" = "#FDAE61", "North America" = "#F46D43",
+  scale_fill_manual(values = c("South America" = "#FEE08B", "Central America\n& the Caribbean" = "#FDAE61", "North America" = "#F46D43",
                                "Europe" = "#D53E4F", "Africa" = "#3288BD", "Asia" = "#66C2A5", "Oceania" = "#E6F598")) +
   theme_minimal() +
   theme(axis.text.x = element_text(size = 13),
@@ -1261,7 +1262,8 @@ figure5 <- bind_rows(figure5A %>% rename(label = langs_label),
                      figure5B %>% rename(label = OA_label))
 
 figure5 <- figure5 %>% mutate(region_custom = case_when(name_long == "Mexico" ~ "North America", TRUE ~ region_custom))
-figure5$region_custom <- factor(figure5$region_custom, levels = c("South America", "Central America & the Caribbean", "North America", "Europe", "Africa", "Asia", "Oceania"))
+figure5 <- figure5 %>% mutate(region_custom = recode(region_custom, "Central America & the Caribbean" = "Central America\n& the Caribbean"),
+                              region_custom = factor(region_custom, levels = c("Asia", "Africa", "North America", "Oceania", "Europe", "Central America\n& the Caribbean", "South America")))
 
 # plot boxplot
 figure5 %>% filter(!is.na(percent), !is.na(region_custom)) %>%
@@ -1272,9 +1274,7 @@ figure5 %>% filter(!is.na(percent), !is.na(region_custom)) %>%
   coord_cartesian(xlim = c(0, 100)) +
   labs(y = "Region",
        x = "% of articles in mainstream local journals") +
-  scale_y_discrete(labels = c("South America", "Central America\n& the Caribbean", "North America",
-                              "Europe", "Africa", "Asia", "Oceania")) +
-  scale_fill_manual(values = c("South America" = "#FEE08B", "Central America & the Caribbean" = "#FDAE61", "North America" = "#F46D43",
+  scale_fill_manual(values = c("South America" = "#FEE08B", "Central America\n& the Caribbean" = "#FDAE61", "North America" = "#F46D43",
                                "Europe" = "#D53E4F", "Africa" = "#3288BD", "Asia" = "#66C2A5", "Oceania" = "#E6F598")) +
   theme_minimal() +
   theme(axis.text.x = element_text(size = 13),
@@ -1359,7 +1359,8 @@ figure6B <- figure6B %>% select(name_long, region_custom, percent_journals, main
                          rename(percent = percent_journals)
 
 figure6B <- figure6B %>% mutate(region_custom = case_when(name_long == "Mexico" ~ "North America", TRUE ~ region_custom))
-figure6B$region_custom <- factor(figure6B$region_custom, levels = c("Africa", "South America", "Asia", "Europe", "North America", "Central America & the Caribbean", "Oceania"))
+figure6B <- figure6B %>% mutate(region_custom = recode(region_custom, "Central America & the Caribbean" = "Central America\n& the Caribbean"),
+                                region_custom = factor(region_custom, levels = c("Africa", "South America", "Asia", "Europe", "North America", "Central America\n& the Caribbean", "Oceania")))
 
 # plot boxplot
 figure6B %>% filter(!is.na(percent), !is.na(region_custom)) %>%
@@ -1369,7 +1370,7 @@ figure6B %>% filter(!is.na(percent), !is.na(region_custom)) %>%
   coord_cartesian(xlim = c(0, 100)) +
   labs(y = "Region",
        x = "% of mainstream local journals") +
-  scale_fill_manual(values = c("South America" = "#FEE08B", "Central America & the Caribbean" = "#FDAE61", "North America" = "#F46D43",
+  scale_fill_manual(values = c("South America" = "#FEE08B", "Central America\n& the Caribbean" = "#FDAE61", "North America" = "#F46D43",
                                "Europe" = "#D53E4F", "Africa" = "#3288BD", "Asia" = "#66C2A5", "Oceania" = "#E6F598")) +
   theme_minimal() +
   theme(axis.text.x = element_text(size = 13),
@@ -1522,7 +1523,8 @@ figure8 <- bind_rows(figure8A %>% rename(label = langs_label),
                      figure8B %>% rename(label = OA_label))
 
 figure8 <- figure8 %>% mutate(region_custom = case_when(name_long == "Mexico" ~ "North America", TRUE ~ region_custom))
-figure8$region_custom <- factor(figure8$region_custom, levels = c("South America", "Central America & the Caribbean", "North America", "Europe", "Africa", "Asia", "Oceania"))
+figure8 <- figure8 %>% mutate(region_custom = recode(region_custom, "Central America & the Caribbean" = "Central America\n& the Caribbean"),
+                              region_custom = factor(region_custom, levels = c("North America", "Asia", "Africa", "Europe", "Oceania", "Central America\n& the Caribbean", "South America")))
 
 # plot boxplot
 figure8 %>% filter(!is.na(percent), !is.na(region_custom)) %>%
@@ -1533,9 +1535,7 @@ figure8 %>% filter(!is.na(percent), !is.na(region_custom)) %>%
   coord_cartesian(xlim = c(0, 100)) +
   labs(y = "Region",
        x = "% of articles in mainstream local journals") +
-  scale_y_discrete(labels = c("South America", "Central America\n& the Caribbean", "North America",
-                              "Europe", "Africa", "Asia", "Oceania")) +
-  scale_fill_manual(values = c("South America" = "#FEE08B", "Central America & the Caribbean" = "#FDAE61", "North America" = "#F46D43",
+  scale_fill_manual(values = c("South America" = "#FEE08B", "Central America\n& the Caribbean" = "#FDAE61", "North America" = "#F46D43",
                                "Europe" = "#D53E4F", "Africa" = "#3288BD", "Asia" = "#66C2A5", "Oceania" = "#E6F598")) +
   theme_minimal() +
   theme(axis.text.x = element_text(size = 13),
@@ -1620,7 +1620,8 @@ figure9B <- figure9B %>% select(name_long, region_custom, percent_journals, main
                          rename(percent = percent_journals)
 
 figure9B <- figure9B %>% mutate(region_custom = case_when(name_long == "Mexico" ~ "North America", TRUE ~ region_custom))
-figure9B$region_custom <- factor(figure9B$region_custom, levels = c("Africa", "Asia", "Central America & the Caribbean", "South America", "North America", "Europe", "Oceania"))
+figure9B <- figure9B %>% mutate(region_custom = recode(region_custom, "Central America & the Caribbean" = "Central America\n& the Caribbean"),
+                                region_custom = factor(region_custom, levels = c("Africa", "Asia", "Central America\n& the Caribbean", "South America", "North America", "Europe", "Oceania")))
 
 # plot boxplot
 figure9B %>% filter(!is.na(percent), !is.na(region_custom)) %>%
@@ -1630,7 +1631,7 @@ figure9B %>% filter(!is.na(percent), !is.na(region_custom)) %>%
   coord_cartesian(xlim = c(0, 100)) +
   labs(y = "Region",
        x = "% of mainstream local journals") +
-  scale_fill_manual(values = c("South America" = "#FEE08B", "Central America & the Caribbean" = "#FDAE61", "North America" = "#F46D43",
+  scale_fill_manual(values = c("South America" = "#FEE08B", "Central America\n& the Caribbean" = "#FDAE61", "North America" = "#F46D43",
                                "Europe" = "#D53E4F", "Africa" = "#3288BD", "Asia" = "#66C2A5", "Oceania" = "#E6F598")) +
   theme_minimal() +
   theme(axis.text.x = element_text(size = 13),
@@ -1783,7 +1784,8 @@ figure11 <- bind_rows(figure11A %>% rename(label = langs_label),
                       figure11B %>% rename(label = OA_label))
 
 figure11 <- figure11 %>% mutate(region_custom = case_when(name_long == "Mexico" ~ "North America", TRUE ~ region_custom))
-figure11$region_custom <- factor(figure11$region_custom, levels = c("South America", "Central America & the Caribbean", "North America", "Europe", "Africa", "Asia", "Oceania"))
+figure11 <- figure11 %>% mutate(region_custom = recode(region_custom, "Central America & the Caribbean" = "Central America\n& the Caribbean"),
+                                region_custom = factor(region_custom, levels = c("Asia", "Africa", "Europe", "North America", "Oceania", "Central America\n& the Caribbean", "South America")))
 
 # plot boxplot
 figure11 %>% filter(!is.na(percent), !is.na(region_custom)) %>%
@@ -1794,9 +1796,7 @@ figure11 %>% filter(!is.na(percent), !is.na(region_custom)) %>%
   coord_cartesian(xlim = c(0, 100)) +
   labs(y = "Region",
        x = "% of articles in mainstream local journals") +
-  scale_y_discrete(labels = c("South America", "Central America\n& the Caribbean", "North America",
-                              "Europe", "Africa", "Asia", "Oceania")) +
-  scale_fill_manual(values = c("South America" = "#FEE08B", "Central America & the Caribbean" = "#FDAE61", "North America" = "#F46D43",
+  scale_fill_manual(values = c("South America" = "#FEE08B", "Central America\n& the Caribbean" = "#FDAE61", "North America" = "#F46D43",
                                "Europe" = "#D53E4F", "Africa" = "#3288BD", "Asia" = "#66C2A5", "Oceania" = "#E6F598")) +
   theme_minimal() +
   theme(axis.text.x = element_text(size = 13),
