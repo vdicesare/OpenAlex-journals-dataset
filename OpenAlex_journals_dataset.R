@@ -1057,7 +1057,7 @@ figure3B <- figure3B %>% select(name_long, region_custom, percent_journals, main
                          rename(percent = percent_journals)
 
 figure3B <- figure3B %>% mutate(region_custom = case_when(name_long == "Mexico" ~ "North America", TRUE ~ region_custom))
-figure3B$region_custom <- factor(figure3B$region_custom, levels = c("South America", "Central America & the Caribbean", "North America", "Europe", "Africa", "Asia", "Oceania"))
+figure3B$region_custom <- factor(figure3B$region_custom, levels = c("Africa", "South America", "Asia", "Central America & the Caribbean", "North America", "Europe", "Oceania"))
 
 # plot boxplot
 figure3B %>% filter(!is.na(percent), !is.na(region_custom)) %>%
@@ -1067,8 +1067,6 @@ figure3B %>% filter(!is.na(percent), !is.na(region_custom)) %>%
   coord_cartesian(xlim = c(0, 100)) +
   labs(y = "Region",
        x = "% of mainstream local journals") +
-  scale_y_discrete(labels = c("South America", "Central America\n& the Caribbean", "North America",
-                              "Europe", "Africa", "Asia", "Oceania")) +
   scale_fill_manual(values = c("South America" = "#FEE08B", "Central America & the Caribbean" = "#FDAE61", "North America" = "#F46D43",
                                "Europe" = "#D53E4F", "Africa" = "#3288BD", "Asia" = "#66C2A5", "Oceania" = "#E6F598")) +
   theme_minimal() +
@@ -1361,7 +1359,7 @@ figure6B <- figure6B %>% select(name_long, region_custom, percent_journals, main
                          rename(percent = percent_journals)
 
 figure6B <- figure6B %>% mutate(region_custom = case_when(name_long == "Mexico" ~ "North America", TRUE ~ region_custom))
-figure6B$region_custom <- factor(figure6B$region_custom, levels = c("South America", "Central America & the Caribbean", "North America", "Europe", "Africa", "Asia", "Oceania"))
+figure6B$region_custom <- factor(figure6B$region_custom, levels = c("Africa", "South America", "Asia", "Europe", "North America", "Central America & the Caribbean", "Oceania"))
 
 # plot boxplot
 figure6B %>% filter(!is.na(percent), !is.na(region_custom)) %>%
@@ -1371,8 +1369,6 @@ figure6B %>% filter(!is.na(percent), !is.na(region_custom)) %>%
   coord_cartesian(xlim = c(0, 100)) +
   labs(y = "Region",
        x = "% of mainstream local journals") +
-  scale_y_discrete(labels = c("South America", "Central America\n& the Caribbean", "North America",
-                              "Europe", "Africa", "Asia", "Oceania")) +
   scale_fill_manual(values = c("South America" = "#FEE08B", "Central America & the Caribbean" = "#FDAE61", "North America" = "#F46D43",
                                "Europe" = "#D53E4F", "Africa" = "#3288BD", "Asia" = "#66C2A5", "Oceania" = "#E6F598")) +
   theme_minimal() +
@@ -1624,7 +1620,7 @@ figure9B <- figure9B %>% select(name_long, region_custom, percent_journals, main
                          rename(percent = percent_journals)
 
 figure9B <- figure9B %>% mutate(region_custom = case_when(name_long == "Mexico" ~ "North America", TRUE ~ region_custom))
-figure9B$region_custom <- factor(figure9B$region_custom, levels = c("South America", "Central America & the Caribbean", "North America", "Europe", "Africa", "Asia", "Oceania"))
+figure9B$region_custom <- factor(figure9B$region_custom, levels = c("Africa", "Asia", "Central America & the Caribbean", "South America", "North America", "Europe", "Oceania"))
 
 # plot boxplot
 figure9B %>% filter(!is.na(percent), !is.na(region_custom)) %>%
@@ -1634,8 +1630,6 @@ figure9B %>% filter(!is.na(percent), !is.na(region_custom)) %>%
   coord_cartesian(xlim = c(0, 100)) +
   labs(y = "Region",
        x = "% of mainstream local journals") +
-  scale_y_discrete(labels = c("South America", "Central America\n& the Caribbean", "North America",
-                              "Europe", "Africa", "Asia", "Oceania")) +
   scale_fill_manual(values = c("South America" = "#FEE08B", "Central America & the Caribbean" = "#FDAE61", "North America" = "#F46D43",
                                "Europe" = "#D53E4F", "Africa" = "#3288BD", "Asia" = "#66C2A5", "Oceania" = "#E6F598")) +
   theme_minimal() +
