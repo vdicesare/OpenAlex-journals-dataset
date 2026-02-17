@@ -4,8 +4,6 @@ authors:
   - family-names: Di Césare
     given-names: Victoria
     orcid: https://orcid.org/0000-0001-7098-1914
-  - family-names: Ihrke
-    given-names: Camryn
 title: "OpenAlex-journals-dataset"
 version: 1.0.0
 date-released: 2025-02-25
