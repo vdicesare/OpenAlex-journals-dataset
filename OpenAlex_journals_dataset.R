@@ -508,6 +508,25 @@ ddff_megamerge <- ddff_megamerge %>% select(OA_ID, other_IDs, OA_source_ID, othe
                                             CWTS_percent_self_citations, CWTS_SNIP, CWTS_SNIP_lower_bound, CWTS_SNIP_upper_bound, CWTS_IPP, CWTS_IPP_lower_bound, CWTS_IPP_upper_bound, SJR_percent_female, SJR_SDG, SJR_overton)
 
 
+### MAIN DOMAINS
+# compute the main domain of each journal according to the highest number of articles that are assigned to a domain, and incorporate this variable to ddff_megamerge
+openalex_journals_domains <- openalex_articles %>% filter(!is.na(domain), domain != "") %>%
+                                                   count(journal_id, domain, name = "n_articles") %>%
+                                                   group_by(journal_id) %>%
+                                                   slice_max(n_articles, n = 1, with_ties = FALSE) %>%
+                                                   ungroup() %>%
+                                                   select(journal_id, domain)
+
+openalex_journals_domains <- openalex_journals_domains %>% mutate(domain = recode(domain, `1` = "Life Sciences",
+                                                                                  `2` = "Social Sciences",
+                                                                                  `3` = "Physical Sciences",
+                                                                                  `4` = "Health Sciences"))
+
+ddff_megamerge <- ddff_megamerge %>% left_join(openalex_journals_domains %>%
+                                                 mutate(journal_id = as.character(journal_id)) %>%
+                                                 rename(OA_main_domains = domain), by = c("OA_source_ID" = "journal_id"))
+
+
 ### LOCAL VARIABLES COMPUTATION
 ## REFERENCES
 # read files and split into 20 dataframes for processing
@@ -825,33 +844,15 @@ ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig2_OA_DOAJ.png", figure2, 
 
 
 ## TABLE 3
-# count unique journals with MJL or JCR IDs in order to group under WOS. The same can be done for Scopus and its sources SCOP, SJR and CWTS
+# count unique journals with MJL or JCR IDs in order to group under WOS, and then count unique WOS journals by knowledge field. The same can be done for Scopus and its sources SCOP, SJR and CWTS, as well as for DOAJ and OpenAlex
 ddff_megamerge %>% mutate(MJL_ID = map_chr(other_IDs, ~ .x$MJL_ID %||% NA_character_),
-                          JCR_ID  = map_chr(other_IDs, ~ .x$JCR_ID  %||% NA_character_)) %>%
-                   mutate(any_ID = coalesce(MJL_ID, JCR_ID)) %>%
-                   summarise(unique_journals_with_any_ID = n_distinct(na.omit(any_ID))) %>%
-                   pull(unique_journals_with_any_ID)
-
-# fractional count of unique WOS journals by knowledge field. The same can be done for Scopus, DOAJ and OpenAlex
-ddff_megamerge %>% mutate(MJL_ID = map_chr(other_IDs, ~ {ids <- .x$MJL_ID
-                                           if (is.null(ids) || all(is.na(ids))) NA_character_ else paste(unique(na.omit(as.character(ids))), collapse = ";")}),
-                                           JCR_ID = map_chr(other_IDs, ~ {ids <- .x$JCR_ID
-                                           if (is.null(ids) || all(is.na(ids))) NA_character_ else paste(unique(na.omit(as.character(ids))), collapse = ";")}),
-                                   journal_key = coalesce(OA_ID, OA_source_ID)) %>%
-                   filter((!is.na(MJL_ID) & MJL_ID != "") | (!is.na(JCR_ID)  & JCR_ID  != "")) %>%
-                   filter(!is.na(OA_domains), OA_domains != "", OA_domains != "NA") %>%
-                   mutate(OA_domains = strsplit(OA_domains, ";\\s*")) %>%
-                   unnest(OA_domains) %>%
-                   mutate(OA_domains = str_trim(OA_domains)) %>%
-                   filter(!is.na(OA_domains), OA_domains != "", OA_domains != "NA") %>%
-                   distinct(journal_key, OA_domains) %>%
-                   group_by(journal_key) %>%
-                   mutate(n_domains = n(), weight = 1 / n_domains) %>%
-                   ungroup() %>%
-                   group_by(OA_domains) %>%
-                   summarise(fractional_count = sum(weight, na.rm = TRUE), .groups = "drop") %>%
-                   arrange(desc(fractional_count)) %>%
-                   print(n = Inf)
+                          JCR_ID = map_chr(other_IDs, ~ .x$JCR_ID %||% NA_character_),
+                          journal_key = coalesce(OA_ID, OA_source_ID)) %>%
+                   filter((!is.na(MJL_ID) & MJL_ID != "") | (!is.na(JCR_ID) & JCR_ID != "")) %>%
+                   filter(!is.na(OA_main_domains)) %>%
+                   distinct(journal_key, OA_main_domains) %>%
+                   count(OA_main_domains, name = "n_journals") %>%
+                   arrange(desc(n_journals))
 
 # count unique WOS journals that are local according to local_territory, local_producers and local_recipients variables. The same can be done for Scopus, DOAJ and OpenAlex
 ddff_megamerge %>% mutate(MJL_ID = map_chr(other_IDs, ~ .x$MJL_ID %||% NA_character_),
@@ -861,26 +862,16 @@ ddff_megamerge %>% mutate(MJL_ID = map_chr(other_IDs, ~ .x$MJL_ID %||% NA_charac
                    summarise(unique_local_WOS_journals = n_distinct(na.omit(WOS_ID))) %>%
                    pull(unique_local_WOS_journals)
 
-# fractional count of unique WOS journals by knowledge field, according to local_territory, local_producers and local_recipients variables. The same can be done for Scopus, DOAJ and OpenAlex
-ddff_megamerge %>% mutate(MJL_ID = map_chr(other_IDs, ~ {ids <- .x$MJL_ID
-                                           if (is.null(ids) || all(is.na(ids))) NA_character_ else paste(unique(na.omit(as.character(ids))), collapse = ";")}),
-                                           JCR_ID = map_chr(other_IDs, ~ {ids <- .x$JCR_ID
-                                           if (is.null(ids) || all(is.na(ids))) NA_character_ else paste(unique(na.omit(as.character(ids))), collapse = ";")}),
-                                   journal_key = coalesce(OA_ID, OA_source_ID)) %>%
-                   filter(local_territory == "local", (!is.na(MJL_ID) & MJL_ID != "") | (!is.na(JCR_ID) & JCR_ID != "")) %>%
-                   filter(!is.na(OA_domains), OA_domains != "", OA_domains != "NA") %>%
-                   mutate(OA_domains = strsplit(OA_domains, ";\\s*")) %>%
-                   unnest(OA_domains) %>%
-                   mutate(OA_domains = str_trim(OA_domains)) %>%
-                   filter(!is.na(OA_domains), OA_domains != "", OA_domains != "NA") %>%
-                   distinct(journal_key, OA_domains) %>%
-                   group_by(journal_key) %>%
-                   mutate(n_domains = n(), weight = 1 / n_domains) %>%
-                   ungroup() %>%
-                   group_by(OA_domains) %>%
-                   summarise(fractional_count = sum(weight, na.rm = TRUE), .groups = "drop") %>%
-                   arrange(desc(fractional_count)) %>%
-                   print(n = Inf)
+# count unique WOS journals by knowledge field, according to local_territory, local_producers and local_recipients variables. The same can be done for Scopus, DOAJ and OpenAlex
+ddff_megamerge %>% mutate(MJL_ID = map_chr(other_IDs, ~ .x$MJL_ID %||% NA_character_),
+                          JCR_ID = map_chr(other_IDs, ~ .x$JCR_ID %||% NA_character_),
+                          journal_key = coalesce(OA_ID, OA_source_ID)) %>%
+                   filter(local_territory == "local") %>%
+                   filter((!is.na(MJL_ID) & MJL_ID != "") | (!is.na(JCR_ID) & JCR_ID != "")) %>%
+                   filter(!is.na(OA_main_domains)) %>%
+                   distinct(journal_key, OA_main_domains) %>%
+                   count(OA_main_domains, name = "n_journals") %>%
+                   arrange(desc(n_journals))
 
 # count unique WOS journals in non-English language according to langs variable. The same can be done for Scopus, DOAJ and OpenAlex
 ddff_megamerge %>% mutate(MJL_ID = map_chr(other_IDs, ~ .x$MJL_ID %||% NA_character_),
@@ -890,26 +881,16 @@ ddff_megamerge %>% mutate(MJL_ID = map_chr(other_IDs, ~ .x$MJL_ID %||% NA_charac
                    summarise(unique_local_WOS_journals = n_distinct(na.omit(WOS_ID))) %>%
                    pull(unique_local_WOS_journals)
 
-# fractional count of unique WOS journals by knowledge field, according to langs variable. The same can be done for Scopus, DOAJ and OpenAlex
-ddff_megamerge %>% mutate(MJL_ID = map_chr(other_IDs, ~ {ids <- .x$MJL_ID
-                                           if (is.null(ids) || all(is.na(ids))) NA_character_ else paste(unique(na.omit(as.character(ids))), collapse = ";")}),
-                                           JCR_ID = map_chr(other_IDs, ~ {ids <- .x$JCR_ID
-                                           if (is.null(ids) || all(is.na(ids))) NA_character_ else paste(unique(na.omit(as.character(ids))), collapse = ";")}),
-                                   journal_key = coalesce(OA_ID, OA_source_ID)) %>%
-                   filter(langs == 0, (!is.na(MJL_ID) & MJL_ID != "") | (!is.na(JCR_ID) & JCR_ID != "")) %>%
-                   filter(!is.na(OA_domains), OA_domains != "", OA_domains != "NA") %>%
-                   mutate(OA_domains = strsplit(OA_domains, ";\\s*")) %>%
-                   unnest(OA_domains) %>%
-                   mutate(OA_domains = str_trim(OA_domains)) %>%
-                   filter(!is.na(OA_domains), OA_domains != "", OA_domains != "NA") %>%
-                   distinct(journal_key, OA_domains) %>%
-                   group_by(journal_key) %>%
-                   mutate(n_domains = n(), weight = 1 / n_domains) %>%
-                   ungroup() %>%
-                   group_by(OA_domains) %>%
-                   summarise(fractional_count = sum(weight, na.rm = TRUE), .groups = "drop") %>%
-                   arrange(desc(fractional_count)) %>%
-                   print(n = Inf)
+# count unique WOS journals by knowledge field, according to langs variable. The same can be done for Scopus, DOAJ and OpenAlex
+ddff_megamerge %>% mutate(MJL_ID = map_chr(other_IDs, ~ .x$MJL_ID %||% NA_character_),
+                          JCR_ID = map_chr(other_IDs, ~ .x$JCR_ID %||% NA_character_),
+                          journal_key = coalesce(OA_ID, OA_source_ID)) %>%
+                   filter(langs == 0) %>%
+                   filter((!is.na(MJL_ID) & MJL_ID != "") | (!is.na(JCR_ID) & JCR_ID != "")) %>%
+                   filter(!is.na(OA_main_domains)) %>%
+                   distinct(journal_key, OA_main_domains) %>%
+                   count(OA_main_domains, name = "n_journals") %>%
+                   arrange(desc(n_journals))
 
 # count unique WOS journals that are open access according to apen_access nested variable. The same can be done for Scopus, DOAJ and OpenAlex
 ddff_megamerge %>% mutate(MJL_ID = map_chr(other_IDs, ~ .x$MJL_ID %||% NA_character_),
@@ -919,8 +900,7 @@ ddff_megamerge %>% mutate(MJL_ID = map_chr(other_IDs, ~ .x$MJL_ID %||% NA_charac
                      if (is.null(x) || all(is.na(x))) return(NA_character_)
                      x <- unique(na.omit(str_trim(as.character(x))))
                      if (length(x) == 0) return(NA_character_)
-                     x[1]
-                   }
+                     x[1]}
                    scop <- clean_val(.x$SCOP_open_access)
                    doaj <- clean_val(.x$DOAJ_open_access)
                    oa   <- clean_val(.x$OA_open_access)
@@ -931,17 +911,17 @@ ddff_megamerge %>% mutate(MJL_ID = map_chr(other_IDs, ~ .x$MJL_ID %||% NA_charac
                 summarise(unique_OA_WOS_journals = n_distinct(na.omit(WOS_ID))) %>%
                 pull(unique_OA_WOS_journals)
 
-# fractional count of unique WOS journals by knowledge field, according to open_access nested variable. The same can be done for Scopus, DOAJ and OpenAlex
+# count unique WOS journals by knowledge field, according to open_access nested variable. The same can be done for Scopus, DOAJ and OpenAlex
 ddff_megamerge %>% mutate(MJL_ID = map_chr(other_IDs, ~ .x$MJL_ID %||% NA_character_),
                           JCR_ID = map_chr(other_IDs, ~ .x$JCR_ID %||% NA_character_),
-                          WOS_ID = coalesce(MJL_ID, JCR_ID)) %>%
+                          WOS_ID = coalesce(MJL_ID, JCR_ID),
+                          journal_key = coalesce(OA_ID, OA_source_ID)) %>%
                    filter(!is.na(WOS_ID) & WOS_ID != "") %>%
                    filter(map_lgl(open_access, ~ {clean_val <- function(x) {
                      if (is.null(x) || all(is.na(x))) return(NA_character_)
                      x <- unique(na.omit(str_trim(as.character(x))))
                      if (length(x) == 0) return(NA_character_)
-                     x[1]
-                   }
+                     x[1]}
                    scop <- clean_val(.x$SCOP_open_access)
                    doaj <- clean_val(.x$DOAJ_open_access)
                    oa   <- clean_val(.x$OA_open_access)
@@ -949,48 +929,32 @@ ddff_megamerge %>% mutate(MJL_ID = map_chr(other_IDs, ~ .x$MJL_ID %||% NA_charac
                    if (!is.na(doaj) && tolower(doaj) == "yes") return(TRUE)
                    if (!is.na(oa)   && oa == TRUE) return(TRUE)
                    FALSE})) %>%
-                filter(!is.na(OA_domains), OA_domains != "", OA_domains != "NA") %>%
-                mutate(OA_domains = strsplit(OA_domains, ";\\s*")) %>%
-                unnest(OA_domains) %>%
-                mutate(OA_domains = str_trim(OA_domains)) %>%
-                filter(!is.na(OA_domains), OA_domains != "", OA_domains != "NA") %>%
-                  distinct(WOS_ID, OA_domains) %>%
-                  group_by(WOS_ID) %>%
-                  mutate(n_domains = n(), weight = 1 / n_domains) %>%
-                  ungroup() %>%
-                    group_by(OA_domains) %>%
-                    summarise(fractional_count = sum(weight, na.rm = TRUE), .groups = "drop") %>%
-                    arrange(desc(fractional_count)) %>%
-                    print(n = Inf)
+                   filter(!is.na(OA_main_domains)) %>%
+                   distinct(journal_key, OA_main_domains) %>%
+                   count(OA_main_domains, name = "n_journals") %>%
+                   arrange(desc(n_journals))
 
 
 ## TABLE 4
-table4 <- ddff_megamerge %>% select(OA_ID, OA_domains, mains, local_territory, local_producers, local_recipients) %>%
-                             distinct()
-
-table4 <- table4 %>% mutate(OA_domains = strsplit(OA_domains, ";\\s*")) %>% 
-                     unnest(OA_domains) %>%
-                     filter(!is.na(OA_domains) & OA_domains != "", OA_domains != "NA")
-
-table4 <- table4 %>% pivot_longer(cols = c(local_territory, local_producers, local_recipients),
-                                  names_to = "conceptualization",
-                                  values_to = "is_local") %>%
-                     mutate(is_local = is_local == "local") %>%
-                     group_by(conceptualization, OA_domains, mains) %>%
-                     summarise(total_journals = n_distinct(OA_ID),
-                               local_journals = sum(is_local, na.rm = TRUE),
-                               percentage_local = (local_journals / total_journals) * 100,
-                               .groups = "drop")
+table4 <- ddff_megamerge %>% select(OA_ID, OA_main_domains, mains, local_territory, local_producers, local_recipients) %>%
+                             distinct() %>%
+                             filter(!is.na(OA_main_domains)) %>%
+                             pivot_longer(cols = c(local_territory, local_producers, local_recipients),
+                                          names_to = "conceptualization",
+                                          values_to = "is_local") %>%
+                             mutate(is_local = is_local == "local") %>%
+                             group_by(conceptualization, OA_main_domains, mains) %>%
+                             summarise(total_journals = n_distinct(OA_ID),
+                                       local_journals = sum(is_local, na.rm = TRUE),
+                                       percentage_local = (local_journals / total_journals) * 100,
+                                       .groups = "drop")
 
 
 ### TERRITORY RESULTS
 local_journals_territory <- ddff_megamerge %>% filter(local_territory == "local")
 
 ## FIGURE 3A
-figure3A <- local_journals_territory %>% mutate(OA_domains = strsplit(OA_domains, ";")) %>%
-                                         unnest(OA_domains) %>%
-                                         mutate(OA_domains = trimws(OA_domains)) %>%
-                                         filter(!is.na(OA_domains) & OA_domains != "") %>%
+figure3A <- local_journals_territory %>% filter(!is.na(OA_main_domains)) %>%
                                          mutate(is_OA = map_lgl(open_access, ~ {if (is.null(.x)) return(FALSE)
                                            .x$SCOP_open_access == "Unpaywall Open Access" |
                                              .x$DOAJ_open_access == "Yes" |
@@ -998,7 +962,7 @@ figure3A <- local_journals_territory %>% mutate(OA_domains = strsplit(OA_domains
                                            is_non_english = langs == 0,
                                            is_overall = TRUE)
 
-figure3A <- figure3A %>% select(OA_ID, OA_domains, mains, is_OA, is_non_english, is_overall) %>%
+figure3A <- figure3A %>% select(OA_ID, OA_main_domains, mains, is_OA, is_non_english, is_overall) %>%
                          distinct() %>%
                          pivot_longer(cols = c(is_OA, is_non_english, is_overall), names_to = "group", values_to = "value") %>%
                          filter(value == TRUE) %>%
@@ -1006,16 +970,16 @@ figure3A <- figure3A %>% select(OA_ID, OA_domains, mains, is_OA, is_non_english,
 
 figure3A <- figure3A %>% filter(!OA_ID %in% c("OA18498", "OA38322", "OA39390"))
 
-figure3A <- figure3A %>% group_by(group, OA_domains, mains) %>%
+figure3A <- figure3A %>% group_by(group, OA_main_domains, mains) %>%
                          summarise(n = n(), .groups = "drop") %>%
-                         group_by(group, OA_domains) %>%
+                         group_by(group, OA_main_domains) %>%
                          mutate(perc = n / sum(n) * 100)
 
 figure3A <- figure3A %>% mutate(mains_label = factor(mains, levels = c(0, 1), labels = c("Non-mainstream", "Mainstream")))
-figure3A <- figure3A %>% mutate(OA_domains = factor(OA_domains, levels = c("Social Sciences", "Physical Sciences", "Life Sciences", "Health Sciences")))
+figure3A <- figure3A %>% mutate(OA_main_domains = factor(OA_main_domains, levels = c("Social Sciences", "Physical Sciences", "Life Sciences", "Health Sciences")))
 figure3A <- figure3A %>% mutate(group = factor(group, levels = c("Overall", "Non-English", "Open Access")))
 
-ggplot(figure3A, aes(x = perc, y = OA_domains, fill = mains_label)) +
+ggplot(figure3A, aes(x = perc, y = OA_main_domains, fill = mains_label)) +
   geom_col(position = position_dodge(width = 0.6), width = 0.6) +
   facet_wrap(~ group, ncol = 3) +
   coord_cartesian(xlim = c(0, 100)) +
@@ -1288,10 +1252,7 @@ ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig5.png", width = 9, height
 local_journals_producers <- ddff_megamerge %>% filter(local_producers == "local")
 
 ## FIGURE 6A
-figure6A <- local_journals_producers %>% mutate(OA_domains = strsplit(OA_domains, ";")) %>%
-                                         unnest(OA_domains) %>%
-                                         mutate(OA_domains = trimws(OA_domains)) %>%
-                                         filter(!is.na(OA_domains) & OA_domains != "") %>%
+figure6A <- local_journals_producers %>% filter(!is.na(OA_main_domains)) %>%
                                          mutate(is_OA = map_lgl(open_access, ~ {if (is.null(.x)) return(FALSE)
                                            .x$SCOP_open_access == "Unpaywall Open Access" |
                                              .x$DOAJ_open_access == "Yes" |
@@ -1299,24 +1260,24 @@ figure6A <- local_journals_producers %>% mutate(OA_domains = strsplit(OA_domains
                                            is_non_english = langs == 0,
                                            is_overall = TRUE)
 
-figure6A <- figure6A %>% select(OA_ID, OA_domains, mains, is_OA, is_non_english, is_overall) %>%
+figure6A <- figure6A %>% select(OA_ID, OA_main_domains, mains, is_OA, is_non_english, is_overall) %>%
                          distinct() %>%
                          pivot_longer(cols = c(is_OA, is_non_english, is_overall), names_to = "group", values_to = "value") %>%
                          filter(value == TRUE) %>%
                          mutate(group = recode(group, "is_OA" = "Open Access", "is_non_english" = "Non-English", "is_overall" = "Overall"))
 
-figure6A <- figure6A %>% filter(!is.na(OA_domains) & OA_domains != "" & OA_domains != "NA")
+figure6A <- figure6A %>% filter(!is.na(OA_main_domains) & OA_main_domains != "" & OA_main_domains != "NA")
 
-figure6A <- figure6A %>% group_by(group, OA_domains, mains) %>%
+figure6A <- figure6A %>% group_by(group, OA_main_domains, mains) %>%
                          summarise(n = n(), .groups = "drop") %>%
-                         group_by(group, OA_domains) %>%
+                         group_by(group, OA_main_domains) %>%
                          mutate(perc = n / sum(n) * 100)
 
 figure6A <- figure6A %>% mutate(mains_label = factor(mains, levels = c(0, 1), labels = c("Non-mainstream", "Mainstream")))
-figure6A <- figure6A %>% mutate(OA_domains = factor(OA_domains, levels = c("Social Sciences", "Physical Sciences", "Life Sciences", "Health Sciences")))
+figure6A <- figure6A %>% mutate(OA_main_domains = factor(OA_main_domains, levels = c("Social Sciences", "Physical Sciences", "Life Sciences", "Health Sciences")))
 figure6A <- figure6A %>% mutate(group = factor(group, levels = c("Overall", "Non-English", "Open Access")))
 
-ggplot(figure6A, aes(x = perc, y = OA_domains, fill = mains_label)) +
+ggplot(figure6A, aes(x = perc, y = OA_main_domains, fill = mains_label)) +
   geom_col(position = position_dodge(width = 0.6), width = 0.6) +
   facet_wrap(~ group, ncol = 3) +
   coord_cartesian(xlim = c(0, 100)) +
@@ -1756,10 +1717,7 @@ ggsave("~/Desktop/OpenAlex_journals_dataset/figures/Fig8C.png", width = 6, heigh
 local_journals_recipients <- ddff_megamerge %>% filter(local_recipients == "local")
 
 ## FIGURE 9A
-figure9A <- local_journals_recipients %>% mutate(OA_domains = strsplit(OA_domains, ";")) %>%
-                                          unnest(OA_domains) %>%
-                                          mutate(OA_domains = trimws(OA_domains)) %>%
-                                          filter(!is.na(OA_domains) & OA_domains != "") %>%
+figure9A <- local_journals_recipients %>% filter(!is.na(OA_main_domains)) %>%
                                           mutate(is_OA = map_lgl(open_access, ~ {if (is.null(.x)) return(FALSE)
                                             .x$SCOP_open_access == "Unpaywall Open Access" |
                                               .x$DOAJ_open_access == "Yes" |
@@ -1767,24 +1725,24 @@ figure9A <- local_journals_recipients %>% mutate(OA_domains = strsplit(OA_domain
                                             is_non_english = langs == 0,
                                             is_overall = TRUE)
 
-figure9A <- figure9A %>% select(OA_ID, OA_domains, mains, is_OA, is_non_english, is_overall) %>%
+figure9A <- figure9A %>% select(OA_ID, OA_main_domains, mains, is_OA, is_non_english, is_overall) %>%
                          distinct() %>%
                          pivot_longer(cols = c(is_OA, is_non_english, is_overall), names_to = "group", values_to = "value") %>%
                          filter(value == TRUE) %>%
                          mutate(group = recode(group, "is_OA" = "Open Access", "is_non_english" = "Non-English", "is_overall" = "Overall"))
 
-figure9A <- figure9A %>% filter(!is.na(OA_domains) & OA_domains != "" & OA_domains != "NA")
+figure9A <- figure9A %>% filter(!is.na(OA_main_domains) & OA_main_domains != "" & OA_main_domains != "NA")
 
-figure9A <- figure9A %>% group_by(group, OA_domains, mains) %>%
+figure9A <- figure9A %>% group_by(group, OA_main_domains, mains) %>%
                          summarise(n = n(), .groups = "drop") %>%
-                         group_by(group, OA_domains) %>%
+                         group_by(group, OA_main_domains) %>%
                          mutate(perc = n / sum(n) * 100)
 
 figure9A <- figure9A %>% mutate(mains_label = factor(mains, levels = c(0, 1), labels = c("Non-mainstream", "Mainstream")))
-figure9A <- figure9A %>% mutate(OA_domains = factor(OA_domains, levels = c("Social Sciences", "Physical Sciences", "Life Sciences", "Health Sciences")))
+figure9A <- figure9A %>% mutate(OA_main_domains = factor(OA_main_domains, levels = c("Social Sciences", "Physical Sciences", "Life Sciences", "Health Sciences")))
 figure9A <- figure9A %>% mutate(group = factor(group, levels = c("Overall", "Non-English", "Open Access")))
 
-ggplot(figure9A, aes(x = perc, y = OA_domains, fill = mains_label)) +
+ggplot(figure9A, aes(x = perc, y = OA_main_domains, fill = mains_label)) +
   geom_col(position = position_dodge(width = 0.6), width = 0.6) +
   facet_wrap(~ group, ncol = 3) +
   coord_cartesian(xlim = c(0, 100)) +
