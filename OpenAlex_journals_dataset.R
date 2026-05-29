@@ -496,7 +496,7 @@ ddff_megamerge <- ddff_megamerge %>% nest(other_IDs = c(MJL_ID, JCR_ID, SCOP_ID,
 # reorder simple and nested variables
 ddff_megamerge <- ddff_megamerge %>% select(OA_ID, other_IDs, OA_source_ID, other_source_IDs, ISSN_codes,
                                             journal_name, journal_name_variants, publisher, country,
-                                            SCOP_main_publisher, DOAJ_other_organization, DOAJ_other_organization_country, SJR_region, language,
+                                            SCOP_main_publisher, DOAJ_other_organization, DOAJ_other_organization_country, SJR_region, language, main_domains,
                                             OA_topics, OA_primary_topics, OA_subfields, OA_fields, OA_domains, MJL_categories, JCR_categories, SJR_categories, SJR_areas, SCOP_ASJC_codes, DOAJ_LCC_codes, DOAJ_subjects, DOAJ_keywords,
                                             JCR_edition, coverage, open_access, DOAJ_open_license_since, DOAJ_license, DOAJ_license_attributes, DOAJ_author_unrestricted_rights, DOAJ_open_citations, DOAJ_machine_readable_license,
                                             DOAJ_review_process, DOAJ_average_weeks_for_publication, APC_prices, DOAJ_other_fees, DOAJ_waiver_policy, DOAJ_deposit_policy, DOAJ_plagiarism_policy,
@@ -524,7 +524,7 @@ openalex_journals_domains <- openalex_journals_domains %>% mutate(domain = recod
 
 ddff_megamerge <- ddff_megamerge %>% left_join(openalex_journals_domains %>%
                                                  mutate(journal_id = as.character(journal_id)) %>%
-                                                 rename(OA_main_domains = domain), by = c("OA_source_ID" = "journal_id"))
+                                                 rename(main_domains = domain), by = c("OA_source_ID" = "journal_id"))
 
 
 ### LOCAL VARIABLES COMPUTATION
@@ -762,7 +762,7 @@ ddff_megamerge_flat <- ddff_megamerge %>% mutate(other_IDs = sapply(other_IDs, t
                                                  website = sapply(website, toJSON, auto_unbox = TRUE),
                                                  total_articles = sapply(total_articles, toJSON, auto_unbox = TRUE),
                                                  total_citations = sapply(total_citations, toJSON, auto_unbox = TRUE))
-#write.csv(ddff_megamerge_flat, "~/Desktop/OpenAlex_journals_dataset/OpenAlex_dataset_merge.csv", row.names = FALSE)
+write.csv(ddff_megamerge_flat, "~/Desktop/OpenAlex_journals_dataset/OpenAlex_datasets_merge.csv", row.names = FALSE)
 
 
 ### OVERALL RESULTS
